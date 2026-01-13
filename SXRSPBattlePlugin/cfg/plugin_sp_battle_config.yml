@@ -1,0 +1,103 @@
+# ============================================================================
+# SP Battle Plugin Configuration
+# TXR-Style Spirit Point Racing System
+# ============================================================================
+
+# --- SP POOL SETTINGS ---
+# Base SP for all players
+TotalSP: 100
+
+# Bonus SP per Driver Level (future DL system integration)
+# Formula: Max SP = TotalSP + (DriverLevel * DriverLevelBonusSPPerLevel)
+DriverLevelBonusSPPerLevel: 5
+MaxDriverLevel: 50
+
+# --- DISTANCE-BASED DRAIN ---
+# Distance thresholds (meters) that define drain zones
+# Each value marks the START of a new drain zone
+FollowDistanceThresholds:
+  - 10    # Zone 0: 0-10m (drafting distance)
+  - 25    # Zone 1: 10-25m (close follow)
+  - 50    # Zone 2: 25-50m (moderate gap)
+  - 100   # Zone 3: 50-100m (falling behind)
+  - 200   # Zone 4: 100-200m (way behind)
+          # Zone 5: 200m+ (critical distance)
+
+# SP drain rates per second for each zone
+# Must have exactly 1 more entry than thresholds
+DrainRatesPerSecond:
+  - 0     # Zone 0: No drain (drafting)
+  - 2     # Zone 1: Slow drain
+  - 5     # Zone 2: Moderate drain
+  - 10    # Zone 3: Fast drain
+  - 20    # Zone 4: Very fast drain
+  - 30    # Zone 5: Critical drain
+
+# --- COLLISION PENALTIES ---
+# SP lost when colliding with opponent
+CollisionSPPenalty: 10
+
+# SP lost when hitting walls/barriers during battle
+WallCollisionSPPenalty: 5
+
+# --- OVERTAKE MECHANICS ---
+# SP bonus gained when overtaking opponent
+OvertakeSPBonus: 5
+
+# SP bonus per second while leading
+LeadBonusPerSecond: 0.5
+
+# --- BATTLE CONDITIONS ---
+# Minimum speed (km/h) to keep battle active
+MinBattleSpeedKph: 30
+
+# Maximum battle duration in seconds (0 = unlimited)
+MaxBattleDurationSeconds: 300
+
+# Distance at which battle ends (leader wins)
+BattleSeparationDistance: 500
+
+# Time without overtake before timeout (leader wins)
+NoOvertakeTimeoutSeconds: 60
+
+# --- CHALLENGE SETTINGS ---
+# Time to accept a challenge (seconds)
+ChallengeTimeoutSeconds: 10
+
+# Maximum distance to initiate challenge (meters)
+ChallengeMaxDistance: 30
+
+# Required lineup distance before countdown (meters)
+LineUpDistance: 10
+
+# Time to line up (seconds)
+LineUpTimeoutSeconds: 15
+
+# Countdown duration (seconds)
+CountdownSeconds: 3
+
+# Cooldown between challenges from same player (seconds)
+ChallengeCooldownSeconds: 20
+
+# --- LEADERBOARD & UI ---
+# Enable persistent leaderboard
+EnableLeaderboard: true
+
+# Leaderboard data file path
+LeaderboardPath: "cfg/plugins/SPBattlePlugin/leaderboard.json"
+
+# Enable in-game Lua UI (requires CSP)
+EnableLuaUI: true
+
+# Broadcast battle results to all players
+BroadcastResults: true
+
+# --- RATING SYSTEM (Elo-inspired) ---
+# Rating points gained for winning
+WinRatingPoints: 25
+
+# Rating points lost for losing
+LossRatingPoints: 20
+
+# Starting rating for new players
+StartingRating: 1000

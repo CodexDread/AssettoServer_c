@@ -1,0 +1,9 @@
+Copyright 2023 AssettoServer Development Team
+
+Redistribution of this software is prohibited.
+You may use this software for your personal and non-commercial use only.
+
+Examples of forbidden commercial purposes include:
+- Selling this software
+- Providing paid server hosting using this software
+- Hosting servers using this software that require an "entry fee" to play on (e.g. Subscriber-only servers)

@@ -1,0 +1,102 @@
+# ============================================================================
+# Admin Tools Plugin Configuration
+# Server Administration Framework
+# ============================================================================
+
+# === ADMIN AUTHENTICATION ===
+# Add Steam IDs to grant admin access
+
+# SuperAdmins have full access including managing other admins
+SuperAdmins:
+  - "76561198000000001"  # Example Steam ID
+
+# Admins can kick, ban (any duration), and use all monitoring tools
+Admins:
+  - "76561198000000002"
+
+# Moderators can kick, monitor, and temp ban up to ModeratorMaxBanHours
+Moderators:
+  - "76561198000000003"
+
+# Maximum ban duration for Moderators (hours, 0 = no limit)
+ModeratorMaxBanHours: 24
+
+# === BAN SYSTEM ===
+
+# Path to ban database file
+BanDatabasePath: "cfg/plugins/AdminToolsPlugin/bans.json"
+
+# Enable IP banning in addition to Steam ID
+EnableIPBans: false
+
+# Default ban duration in hours (0 = permanent)
+DefaultBanDurationHours: 0
+
+# Check bans when players connect
+CheckBansOnConnect: true
+
+# Message shown to banned players
+# Variables: {reason}, {expires}, {bannedby}, {bannedat}
+BanMessage: "You are banned from this server. Reason: {reason}. Expires: {expires}"
+
+# === KICK SYSTEM ===
+
+# Default kick reason if none provided
+DefaultKickReason: "Kicked by admin"
+
+# Cooldown between kicks of same player (seconds)
+KickCooldownSeconds: 5
+
+# === AUDIT LOGGING ===
+
+# Enable audit logging of admin actions
+EnableAuditLog: true
+
+# Path to audit log file
+AuditLogPath: "cfg/plugins/AdminToolsPlugin/audit.log"
+
+# Maximum audit entries to keep in memory
+MaxAuditLogEntries: 1000
+
+# What to log
+LogKicks: true
+LogBans: true
+LogAdminLogins: true
+
+# === UI SETTINGS ===
+
+# Enable in-game Lua admin panel
+EnableLuaUI: true
+
+# Hotkey to open admin panel (CSP key code, 0x79 = F10)
+AdminPanelHotkey: 0x79
+
+# Show admin indicator in player list
+ShowAdminIndicator: true
+
+# === HTTP API ===
+
+# Enable HTTP API endpoints
+EnableHttpApi: true
+
+# Require API key for HTTP requests
+RequireHttpAuth: true
+
+# API key (generate a strong random string)
+HttpApiKey: "your-secure-api-key-here"
+
+# === MONITORING ===
+
+# Update interval for player monitoring (ms)
+MonitoringUpdateIntervalMs: 1000
+
+# Track player incidents (collisions, resets)
+TrackIncidents: true
+
+# Incident threshold for warnings
+IncidentWarningThreshold: 10
+
+# === FRAMEWORK ===
+
+# Enable custom admin tools loading
+EnableCustomTools: true

@@ -1,0 +1,14 @@
+<?xml version='1.0'?>
+<Obfuscator>
+    <Var name="InPath" value="." />
+    <Var name="OutPath" value="./obfuscated" />
+    <Var name="KeepPublicApi" value="false" />
+    <Var name="HidePrivateApi" value="true" />
+    <Var name="HideStrings" value="true" />
+    <AssemblySearchPath path="C:\Users\Julian\source\repos\AssettoServer\AssettoServer\bin\Debug\net8.0\win-x64" />
+    <AssemblySearchPath path="C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\8.0.0\ref\net8.0" />
+    <AssemblySearchPath path="C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\8.0.0\ref\net8.0" />
+    <Module file="$(InPath)/PatreonAnalyticsPlugin.dll">
+        <SkipType name="*AnonymousType*" skipProperties="true" skipMethods="true" skipFields="true" skipEvents="true" skipStringHiding="true" />
+    </Module>
+</Obfuscator>
