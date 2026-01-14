@@ -1,4 +1,4 @@
-# Admin Tools Plugin - Changelog
+# SXR Admin Tools Plugin - Changelog
 
 ## [1.1.0] - 2026-01-13
 

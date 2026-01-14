@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Numerics;
 
-namespace RealisticTrafficPlugin.Splines;
+namespace SXRRealisticTrafficPlugin.Splines;
 
 /// <summary>
 /// Parser for Assetto Corsa AI spline files (.ai and .aip formats).

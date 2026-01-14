@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace RealisticTrafficPlugin.Models;
+namespace SXRRealisticTrafficPlugin.Models;
 
 /// <summary>
 /// Generates smooth lane change trajectories using quintic polynomials.

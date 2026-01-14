@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace RealisticTrafficPlugin.Models;
+namespace SXRRealisticTrafficPlugin.Models;
 
 /// <summary>
 /// Intelligent Driver Model (IDM) for realistic car-following behavior.

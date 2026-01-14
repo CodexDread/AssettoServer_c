@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>SXRWelcomePlugin</RootNamespace>
+        <AssemblyName>SXRWelcomePlugin</AssemblyName>
+        <Version>1.0.0</Version>
+        <Authors>SXR Project</Authors>
+        <Description>Welcome popup with server info and restrictions for AssettoServer</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AssettoServer\AssettoServer.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <Content Include="lua\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+</Project>

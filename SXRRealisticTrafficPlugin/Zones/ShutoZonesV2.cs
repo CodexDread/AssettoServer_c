@@ -1,4 +1,4 @@
-namespace RealisticTrafficPlugin.Zones;
+namespace SXRRealisticTrafficPlugin.Zones;
 
 /// <summary>
 /// Shuto Revival Project zone definitions based on actual fast_lane.ai spline analysis.

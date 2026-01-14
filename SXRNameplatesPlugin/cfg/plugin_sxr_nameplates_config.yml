@@ -1,0 +1,87 @@
+# ============================================================================
+# Nameplates Plugin Configuration
+# Player Nameplates Above Cars
+# ============================================================================
+
+# Enable the nameplates system
+Enabled: true
+
+# Enable the Lua UI script
+EnableLuaUI: true
+
+# Enable HTTP API for nameplate data
+EnableHttpApi: true
+
+# === VISIBILITY ===
+
+# Maximum distance to show nameplates (meters)
+MaxVisibleDistance: 500
+
+# Distance at which nameplates start fading (meters)
+FadeStartDistance: 300
+
+# Minimum opacity for distant nameplates (0-1)
+MinOpacity: 0.3
+
+# Height offset above car (meters)
+HeightOffset: 2.5
+
+# === DISPLAY OPTIONS ===
+
+# Show driver level badge [DL]
+ShowDriverLevel: true
+
+# Show car class indicator
+ShowCarClass: true
+
+# Show racer club tag
+ShowClubTag: true
+
+# Show leaderboard rank #
+ShowRank: true
+
+# Show safety rating (colors name)
+ShowSafetyRating: true
+
+# === INTEGRATION ===
+
+# Sync interval for nameplate data (ms)
+SyncIntervalMs: 5000
+
+# Use PlayerStatsPlugin for driver level
+IntegratePlayerStats: true
+
+# === CAR CLASS MAPPINGS ===
+# Map car model prefixes to class letters
+# Customize these for your server's car list
+
+CarClassMappings:
+  # S-Class (Supercars)
+  "ks_ferrari": "S"
+  "ks_lamborghini": "S"
+  "ks_mclaren": "S"
+  "ks_pagani": "S"
+  
+  # A-Class (Sports)
+  "ks_porsche_911": "A"
+  "ks_nissan_gtr": "A"
+  "ks_corvette": "A"
+  "ks_audi_r8": "A"
+  
+  # B-Class (Tuners)
+  "ks_toyota_supra": "B"
+  "ks_mazda_rx7": "B"
+  "ks_honda_nsx": "B"
+  "ks_nissan_skyline": "B"
+  "ks_toyota_ae86": "B"
+  
+  # C-Class (Street)
+  "ks_bmw_m3": "C"
+  "ks_audi_": "C"
+  "ks_mercedes": "C"
+  
+  # D-Class (Default)
+  # Any car not matching above gets this class
+
+# Default class for unmapped cars
+DefaultCarClass: "D"

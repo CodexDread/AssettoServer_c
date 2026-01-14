@@ -1,0 +1,283 @@
+{
+  "version": "1.0",
+  "description": "Car class mappings for SXR Car Lock Plugin. Edit this file to add/modify car restrictions.",
+  "cars": [
+    // ========================================
+    // S-CLASS (Supercars) - Level 50+
+    // Elite drivers only
+    // ========================================
+    {
+      "model": "ks_ferrari_488",
+      "class": "S",
+      "displayName": "Ferrari 488 GTB"
+    },
+    {
+      "model": "ks_ferrari_f40",
+      "class": "S",
+      "displayName": "Ferrari F40"
+    },
+    {
+      "model": "ks_ferrari_458",
+      "class": "S",
+      "displayName": "Ferrari 458 Italia"
+    },
+    {
+      "model": "ks_lamborghini_huracan",
+      "class": "S",
+      "displayName": "Lamborghini Huracan"
+    },
+    {
+      "model": "ks_lamborghini_aventador",
+      "class": "S",
+      "displayName": "Lamborghini Aventador"
+    },
+    {
+      "model": "ks_mclaren_p1",
+      "class": "S",
+      "displayName": "McLaren P1"
+    },
+    {
+      "model": "ks_mclaren_650s",
+      "class": "S",
+      "displayName": "McLaren 650S"
+    },
+    {
+      "model": "ks_pagani_huayra",
+      "class": "S",
+      "displayName": "Pagani Huayra"
+    },
+    {
+      "model": "ks_porsche_918",
+      "class": "S",
+      "displayName": "Porsche 918 Spyder"
+    },
+
+    // ========================================
+    // A-CLASS (Sports Cars) - Level 30+
+    // Experienced drivers
+    // ========================================
+    {
+      "model": "ks_porsche_911_gt3",
+      "class": "A",
+      "displayName": "Porsche 911 GT3"
+    },
+    {
+      "model": "ks_porsche_911_r",
+      "class": "A",
+      "displayName": "Porsche 911 R"
+    },
+    {
+      "model": "ks_nissan_gtr",
+      "class": "A",
+      "displayName": "Nissan GT-R"
+    },
+    {
+      "model": "ks_corvette_c7",
+      "class": "A",
+      "displayName": "Corvette C7 Stingray"
+    },
+    {
+      "model": "ks_audi_r8",
+      "class": "A",
+      "displayName": "Audi R8 V10"
+    },
+    {
+      "model": "ks_audi_r8_plus",
+      "class": "A",
+      "displayName": "Audi R8 V10 Plus"
+    },
+    {
+      "model": "ks_bmw_m4",
+      "class": "A",
+      "displayName": "BMW M4"
+    },
+    {
+      "model": "ks_mercedes_amg_gt",
+      "class": "A",
+      "displayName": "Mercedes AMG GT"
+    },
+    {
+      "model": "ks_ford_gt",
+      "class": "A",
+      "displayName": "Ford GT"
+    },
+
+    // ========================================
+    // B-CLASS (Tuners) - Level 15+
+    // Intermediate drivers
+    // ========================================
+    {
+      "model": "ks_toyota_supra",
+      "class": "B",
+      "displayName": "Toyota Supra MK4",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_mazda_rx7",
+      "class": "B",
+      "displayName": "Mazda RX-7",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_nissan_skyline",
+      "class": "B",
+      "displayName": "Nissan Skyline GT-R",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_nissan_silvia",
+      "class": "B",
+      "displayName": "Nissan Silvia S15",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_honda_nsx",
+      "class": "B",
+      "displayName": "Honda NSX",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_mitsubishi_evo",
+      "class": "B",
+      "displayName": "Mitsubishi Lancer EVO",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_subaru_wrx",
+      "class": "B",
+      "displayName": "Subaru WRX STI",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_subaru_brz",
+      "class": "B",
+      "displayName": "Subaru BRZ"
+    },
+    {
+      "model": "ks_nissan_370z",
+      "class": "B",
+      "displayName": "Nissan 370Z"
+    },
+    {
+      "model": "ks_toyota_gt86",
+      "class": "B",
+      "displayName": "Toyota GT86"
+    },
+
+    // ========================================
+    // C-CLASS (Street) - Level 5+
+    // Developing drivers
+    // ========================================
+    {
+      "model": "ks_bmw_m3_e30",
+      "class": "C",
+      "displayName": "BMW M3 E30"
+    },
+    {
+      "model": "ks_bmw_m3_e92",
+      "class": "C",
+      "displayName": "BMW M3 E92"
+    },
+    {
+      "model": "ks_bmw_m3_e46",
+      "class": "C",
+      "displayName": "BMW M3 E46"
+    },
+    {
+      "model": "ks_audi_s1",
+      "class": "C",
+      "displayName": "Audi S1"
+    },
+    {
+      "model": "ks_audi_sport_quattro",
+      "class": "C",
+      "displayName": "Audi Sport Quattro"
+    },
+    {
+      "model": "ks_alfa_romeo_155",
+      "class": "C",
+      "displayName": "Alfa Romeo 155"
+    },
+    {
+      "model": "ks_alfa_romeo_gta",
+      "class": "C",
+      "displayName": "Alfa Romeo GTA"
+    },
+    {
+      "model": "ks_mazda_mx5",
+      "class": "C",
+      "displayName": "Mazda MX-5",
+      "matchMode": "prefix"
+    },
+    {
+      "model": "ks_honda_s2000",
+      "class": "C",
+      "displayName": "Honda S2000"
+    },
+    {
+      "model": "ks_lotus_elise",
+      "class": "C",
+      "displayName": "Lotus Elise",
+      "matchMode": "prefix"
+    },
+
+    // ========================================
+    // D-CLASS (Starter) - Level 1+
+    // New drivers
+    // ========================================
+    {
+      "model": "ks_toyota_ae86",
+      "class": "D",
+      "displayName": "Toyota AE86"
+    },
+    {
+      "model": "ks_toyota_ae86_tuned",
+      "class": "D",
+      "displayName": "Toyota AE86 Tuned"
+    },
+    {
+      "model": "ks_fiat_500",
+      "class": "D",
+      "displayName": "Fiat 500"
+    },
+    {
+      "model": "ks_abarth_500",
+      "class": "D",
+      "displayName": "Abarth 500"
+    },
+    {
+      "model": "ks_abarth_500_assetto",
+      "class": "D",
+      "displayName": "Abarth 500 Assetto Corse"
+    },
+
+    // ========================================
+    // E-CLASS (Entry/Kei) - Level 1+
+    // Everyone welcome
+    // ========================================
+    {
+      "model": "ks_mazda_miata",
+      "class": "E",
+      "displayName": "Mazda Miata"
+    },
+    {
+      "model": "traffic_",
+      "class": "E",
+      "displayName": "Traffic Car",
+      "matchMode": "prefix",
+      "notes": "All traffic cars are always available"
+    }
+  ],
+
+  // Cars that bypass level requirements entirely
+  "alwaysAllowed": [
+    // Add car models here that anyone can drive regardless of level
+    // "ks_special_event_car"
+  ],
+
+  // Cars that are never allowed on the server
+  "alwaysBlocked": [
+    // Add car models here that should be completely blocked
+    // "some_broken_mod"
+  ]
+}

@@ -1,0 +1,62 @@
+# ============================================================================
+# SXR Car Lock Plugin Configuration
+# Driver Level Vehicle Restrictions
+# ============================================================================
+
+# Enable the car lock system
+Enabled: true
+
+# Enable HTTP API
+EnableHttpApi: true
+
+# === ENFORCEMENT ===
+
+# Enforcement mode: Spectate, Kick, or Warning
+# - Spectate: Move player to spectator mode
+# - Kick: Kick player from server with message
+# - Warning: Just show warning, no enforcement
+Mode: Spectate
+
+# Grace period in seconds before enforcement
+# This allows the welcome popup to display first
+GracePeriodSeconds: 10
+
+# Message shown when player is kicked
+KickMessage: "Your driver level is too low for this vehicle. Please choose a different car and reconnect."
+
+# Allow admins to bypass restrictions
+AdminsBypass: true
+
+# === CLASS LEVEL REQUIREMENTS ===
+# Minimum driver level needed for each car class
+
+# S-Class (Supercars) - Elite drivers
+SClassMinLevel: 50
+
+# A-Class (Sports Cars) - Experienced drivers
+AClassMinLevel: 30
+
+# B-Class (Tuners) - Intermediate drivers
+BClassMinLevel: 15
+
+# C-Class (Street) - Developing drivers
+CClassMinLevel: 5
+
+# D-Class (Starter) - New drivers
+DClassMinLevel: 1
+
+# E-Class (Entry/Kei) - Everyone
+EClassMinLevel: 1
+
+# === CAR CLASS MAPPINGS (JSON FILE) ===
+
+# Path to JSON file containing car-to-class mappings
+# Can be absolute or relative to plugin directory
+CarClassesJsonFile: "cfg/car_classes.json"
+
+# Default class for cars not found in the JSON file
+DefaultCarClass: "D"
+
+# Automatically reload JSON file when it changes
+# Useful for editing car classes without server restart
+AutoReloadJson: true

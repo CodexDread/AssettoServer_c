@@ -1,4 +1,4 @@
-# SP Battle Plugin - Changelog
+# SXR SP Battle Plugin - Changelog
 
 ## [1.0.0] - 2026-01-13
 

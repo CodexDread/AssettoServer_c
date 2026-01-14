@@ -1,4 +1,4 @@
-namespace RealisticTrafficPlugin.Zones;
+namespace SXRRealisticTrafficPlugin.Zones;
 
 /// <summary>
 /// Defines traffic zones on Shuto Expressway with varying density and behavior parameters.

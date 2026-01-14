@@ -1,4 +1,4 @@
-# SP Battle Plugin
+# SXR SP Battle Plugin
 
 A Tokyo Xtreme Racer (TXR) inspired Spirit Point battle system for AssettoServer.
 
@@ -30,12 +30,12 @@ A Tokyo Xtreme Racer (TXR) inspired Spirit Point battle system for AssettoServer
 
 ## Installation
 
-1. Copy `SPBattlePlugin.dll` and `lua/` folder to your plugins directory
+1. Copy `SXRSPBattlePlugin.dll` and `lua/` folder to your plugins directory
 2. Add configuration to `extra_cfg.yml`:
 
 ```yaml
 EnablePlugins:
-  - SPBattlePlugin
+  - SXRSPBattlePlugin
 
 ---
 !SPBattleConfiguration
@@ -100,7 +100,7 @@ ChallengeCooldownSeconds: 20
 
 # Leaderboard
 EnableLeaderboard: true
-LeaderboardPath: "cfg/plugins/SPBattlePlugin/leaderboard.json"
+LeaderboardPath: "cfg/plugins/SXRSPBattlePlugin/leaderboard.json"
 EnableLuaUI: true
 BroadcastResults: true
 WinRatingPoints: 25

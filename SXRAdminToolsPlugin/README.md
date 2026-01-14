@@ -1,4 +1,4 @@
-# Admin Tools Plugin
+# SXR Admin Tools Plugin
 
 A comprehensive server administration framework for AssettoServer with in-game UI, HTTP API, and extensibility.
 
@@ -40,12 +40,12 @@ A comprehensive server administration framework for AssettoServer with in-game U
 
 ## Installation
 
-1. Copy `AdminToolsPlugin.dll` and `lua/` folder to your plugins directory
+1. Copy `SXRAdminToolsPlugin.dll` and `lua/` folder to your plugins directory
 2. Configure admin Steam IDs in `extra_cfg.yml`:
 
 ```yaml
 EnablePlugins:
-  - AdminToolsPlugin
+  - SXRAdminToolsPlugin
 
 ---
 !AdminToolsConfiguration
@@ -203,7 +203,7 @@ public class MyCustomTool : IAdminTool
     public string DisplayName => "My Custom Tool";
     public AdminLevel RequiredLevel => AdminLevel.Admin;
     
-    public Task InitializeAsync(AdminToolsPlugin plugin)
+    public Task InitializeAsync(SXRAdminToolsPlugin plugin)
     {
         // Setup code
         return Task.CompletedTask;
@@ -240,10 +240,10 @@ adminToolsPlugin.OnPlayerBanned += (sender, banRecord) =>
 ## Data Storage
 
 ### Bans
-Stored in JSON format at configured path (default: `cfg/plugins/AdminToolsPlugin/bans.json`)
+Stored in JSON format at configured path (default: `cfg/plugins/SXRAdminToolsPlugin/bans.json`)
 
 ### Audit Log
-Appended to text file at configured path (default: `cfg/plugins/AdminToolsPlugin/audit.log`)
+Appended to text file at configured path (default: `cfg/plugins/SXRAdminToolsPlugin/audit.log`)
 
 Format: `[timestamp] AdminName (AdminSteamId): Action -> TargetName (TargetSteamId) - Details`
 

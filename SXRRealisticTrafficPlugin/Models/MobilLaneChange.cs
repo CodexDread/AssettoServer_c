@@ -1,4 +1,4 @@
-namespace RealisticTrafficPlugin.Models;
+namespace SXRRealisticTrafficPlugin.Models;
 
 /// <summary>
 /// MOBIL (Minimizing Overall Braking Induced by Lane changes) algorithm.

@@ -1,0 +1,77 @@
+# ============================================================================
+# SXR Welcome Plugin Configuration
+# Welcome Popup with Server Info and Restrictions
+# ============================================================================
+
+# Enable the welcome popup
+Enabled: true
+
+# Enable Lua UI script
+EnableLuaUI: true
+
+# Enable HTTP API
+EnableHttpApi: true
+
+# === SERVER INFO ===
+
+# Server name displayed in welcome popup
+ServerName: "Shuto Expressway Revival"
+
+# Server description/tagline
+ServerDescription: "Tokyo's Underground Racing Scene"
+
+# Welcome message shown to players
+WelcomeMessage: "Welcome to the Shuto Expressway! Please read the rules below before driving."
+
+# === RULES ===
+
+Rules:
+  - "Respect all players - no harassment or toxic behavior"
+  - "No ramming or intentional crashing"
+  - "Use headlights at night and in tunnels"
+  - "Flash lights to challenge for SP Battle"
+  - "Hazard lights = accepting challenge"
+  - "Keep right lane for slower traffic"
+  - "No blocking or brake checking"
+  - "Report issues in Discord"
+
+# === RESTRICTIONS WARNING ===
+
+# Show car restriction warning if applicable
+ShowRestrictionWarning: true
+
+# Warning message template
+# Placeholders: {car}, {class}, {required}, {current}, {needed}
+RestrictionWarningTemplate: "⚠️ Your selected car ({car}) requires Driver Level {required}. You are currently Level {current} and need {needed} more levels. Please select a different car from the list below."
+
+# Show available cars when player is restricted
+ShowAvailableCars: true
+
+# Maximum cars to show in available list
+MaxAvailableCarsToShow: 10
+
+# === TIMING ===
+
+# Delay before showing popup (seconds) - allows game to load
+ShowDelaySeconds: 2.0
+
+# Auto-dismiss popup after this many seconds (0 = never auto-dismiss)
+AutoDismissSeconds: 0
+
+# Minimum time popup must be shown before dismiss button works
+# Longer for restricted players so they see the warning
+MinimumDisplaySeconds: 3.0
+
+# === DISPLAY ===
+
+# Show driver level info
+ShowDriverLevel: true
+
+# Show social/Discord links
+ShowSocialLinks: true
+
+# Discord invite URL (leave empty to hide)
+DiscordUrl: "discord.gg/yourserver"
+
+# Website URL (leave empty to hide)
+WebsiteUrl: "https://yourserver.com"

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>SXRCarLockPlugin</RootNamespace>
+        <AssemblyName>SXRCarLockPlugin</AssemblyName>
+        <Version>1.0.0</Version>
+        <Authors>SXR Project</Authors>
+        <Description>Driver level vehicle restrictions for AssettoServer</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AssettoServer\AssettoServer.csproj" />
+    </ItemGroup>
+
+</Project>

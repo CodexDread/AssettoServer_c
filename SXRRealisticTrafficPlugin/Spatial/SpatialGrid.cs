@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Numerics;
-using RealisticTrafficPlugin.Models;
+using SXRRealisticTrafficPlugin.Models;
 
-namespace RealisticTrafficPlugin.Spatial;
+namespace SXRRealisticTrafficPlugin.Spatial;
 
 /// <summary>
 /// Spatial grid for efficient O(1) average-case vehicle lookups.

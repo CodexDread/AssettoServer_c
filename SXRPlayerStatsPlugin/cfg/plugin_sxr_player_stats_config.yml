@@ -1,0 +1,79 @@
+# ============================================================================
+# Player Stats Plugin Configuration
+# Comprehensive Statistics Tracking System
+# ============================================================================
+
+# --- STORAGE SETTINGS ---
+# Path to player stats database file
+DatabasePath: "cfg/plugins/PlayerStatsPlugin/playerstats.json"
+
+# How often to auto-save stats (seconds)
+SaveIntervalSeconds: 60
+
+# Enable backup files before saving
+EnableBackups: true
+
+# Number of backup files to keep
+MaxBackupCount: 5
+
+# --- UI & API ---
+# Enable in-game Lua UI (requires CSP)
+EnableLuaUI: true
+
+# Enable HTTP API endpoints
+EnableHttpApi: true
+
+# --- SESSION TRACKING ---
+# Minimum session time to count as valid (seconds)
+MinSessionTimeSeconds: 60
+
+# Minimum race distance to count as participated (meters)
+MinRaceDistanceMeters: 500
+
+# Update interval for position/speed tracking (ms)
+TrackingUpdateIntervalMs: 500
+
+# Minimum speed to count as "active driving" (km/h)
+MinActiveSpeedKph: 10
+
+# Speed threshold for "high speed" tracking (km/h)
+HighSpeedThresholdKph: 200
+
+# === DRIVER LEVEL SYSTEM ===
+
+# Enable driver level progression
+EnableDriverLevel: true
+
+# Starting level for new players
+StartingDriverLevel: 1
+
+# Maximum achievable level
+MaxDriverLevel: 100
+
+# Base XP required for level 2
+BaseXPPerLevel: 1000
+
+# XP scaling factor per level (exponential)
+# Level N requires: BaseXP * (XPScalingFactor ^ (N-1))
+# 1.15 = moderate curve, takes longer at higher levels
+XPScalingFactor: 1.15
+
+# === XP REWARDS ===
+
+# XP earned per kilometer driven
+XPPerKilometer: 10
+
+# XP earned per minute of active driving
+XPPerMinuteActive: 5
+
+# XP for winning a race or battle
+XPForWin: 100
+
+# XP for completing a race (not DNF)
+XPForRaceComplete: 25
+
+# XP penalty per collision
+XPPenaltyPerCollision: 2
+
+# XP multiplier for clean race (no collisions)
+CleanRaceXPMultiplier: 1.5
