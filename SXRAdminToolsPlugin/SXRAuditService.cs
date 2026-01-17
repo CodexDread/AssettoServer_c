@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using Serilog;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Service for audit logging of admin actions
 /// </summary>
-public class SXRSXRAuditService
+public class SXRAuditService
 {
     private readonly SXRAdminToolsConfiguration _config;
     private readonly ConcurrentQueue<AuditEntry> _entries = new();

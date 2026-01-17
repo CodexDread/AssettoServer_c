@@ -2,12 +2,12 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Serilog;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Service for managing player bans
 /// </summary>
-public class SXRSXRBanService
+public class SXRBanService
 {
     private readonly SXRAdminToolsConfiguration _config;
     private readonly ConcurrentDictionary<string, BanRecord> _bans = new();

@@ -3,13 +3,13 @@ using AssettoServer.Commands.Attributes;
 using AssettoServer.Network.Tcp;
 using Qmmands;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Admin chat commands
 /// </summary>
 [RequireConnectedPlayer]
-public class SXRSXRAdminCommandModule : ACModuleBase
+public class SXRAdminCommandModule : ACModuleBase
 {
     private readonly SXRAdminToolsPlugin _plugin;
     private readonly SXRBanService _banService;
@@ -316,6 +316,7 @@ public class SXRSXRAdminCommandModule : ACModuleBase
         Reply(message.TrimEnd());
     }
     
+    
     // === HELP ===
     
     /// <summary>
@@ -334,22 +335,265 @@ public class SXRSXRAdminCommandModule : ACModuleBase
         
         string message = $"[Admin Commands - Level: {level}]\n";
         message += "/players - List online players\n";
-        message += "/playerinfo <name> - Player details\n";
-        message += "/kick <name> [reason] - Kick player\n";
+        message += "/playerinfo <n> - Player details\n";
+        message += "/kick <n> [reason] - Kick player\n";
         message += "/kickid <id> [reason] - Kick by session ID\n";
+        message += "/pit <n> - Teleport to pits\n";
+        message += "/forcelights <on/off> <n> - Force headlights\n";
         
         if (level >= AdminLevel.Moderator)
         {
-            message += "/tempban <name> <hours> [reason] - Temp ban\n";
+            message += "/tempban <n> <hours> [reason] - Temp ban\n";
             message += "/bans [search] - List bans\n";
         }
         
         if (level >= AdminLevel.Admin)
         {
-            message += "/ban <name> [reason] - Permanent ban\n";
+            message += "/ban <n> [reason] - Permanent ban\n";
             message += "/banid <steamid> [hours] [reason] - Offline ban\n";
             message += "/unban <id> - Remove ban\n";
             message += "/audit [count] - View audit log\n";
+            message += "/settime <HH:mm> - Set server time\n";
+            message += "/setweather <id> - Set weather config\n";
+            message += "/setcspweather <type> [sec] - Set CSP weather\n";
+            message += "/cspweather - List CSP weather types\n";
+            message += "/restrict <n> <restrictor> <ballast> - Set restrictions\n";
+            message += "/whitelist <steamid> - Add to whitelist\n";
+            message += "/unwhitelist <steamid> - Remove from whitelist\n";
+            message += "/whitelistshow - View whitelist\n";
+        }
+        
+        Reply(message.TrimEnd());
+    }
+    
+    // === TELEPORT ===
+    
+    /// <summary>
+    /// Teleport a player to pits
+    /// </summary>
+    [Command("pit")]
+    public void TeleportToPits(ACTcpClient target)
+    {
+        if (MyLevel == AdminLevel.None)
+        {
+            Reply("You don't have permission.");
+            return;
+        }
+        
+        var result = _plugin.TeleportToPits(new PitRequest
+        {
+            TargetSessionId = target.SessionId,
+            AdminSteamId = MySteamId
+        });
+        
+        Reply(result.Message);
+    }
+    
+    // === FORCE LIGHTS ===
+    
+    /// <summary>
+    /// Force headlights on/off
+    /// </summary>
+    [Command("forcelights")]
+    public void ForceLights(string state, ACTcpClient target)
+    {
+        if (MyLevel == AdminLevel.None)
+        {
+            Reply("You don't have permission.");
+            return;
+        }
+        
+        bool forceOn = state.ToLowerInvariant() == "on";
+        
+        var result = _plugin.ForceLights(new ForceLightsRequest
+        {
+            TargetSessionId = target.SessionId,
+            ForceOn = forceOn,
+            AdminSteamId = MySteamId
+        });
+        
+        Reply(result.Message);
+    }
+    
+    // === TIME & WEATHER ===
+    
+    /// <summary>
+    /// Set server time
+    /// </summary>
+    [Command("settime")]
+    public void SetTime(string timeStr)
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        // Parse HH:mm format
+        var parts = timeStr.Split(':');
+        if (parts.Length != 2 || !int.TryParse(parts[0], out int hour) || !int.TryParse(parts[1], out int minute))
+        {
+            Reply("Invalid time format. Use HH:mm (e.g., 14:30)");
+            return;
+        }
+        
+        var result = _plugin.SetTime(new SetTimeRequest
+        {
+            Hour = hour,
+            Minute = minute,
+            AdminSteamId = MySteamId
+        });
+        
+        Reply(result.Message);
+    }
+    
+    /// <summary>
+    /// Set weather by config ID
+    /// </summary>
+    [Command("setweather")]
+    public void SetWeather(int weatherId)
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var result = _plugin.SetWeather(new SetWeatherRequest
+        {
+            WeatherConfigId = weatherId,
+            AdminSteamId = MySteamId
+        });
+        
+        Reply(result.Message);
+    }
+    
+    /// <summary>
+    /// Set CSP weather type
+    /// </summary>
+    [Command("setcspweather")]
+    public void SetCspWeather(string weatherType, float transitionSeconds = 30f)
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var result = _plugin.SetWeather(new SetWeatherRequest
+        {
+            WeatherType = weatherType,
+            TransitionDuration = transitionSeconds,
+            AdminSteamId = MySteamId
+        });
+        
+        Reply(result.Message);
+    }
+    
+    /// <summary>
+    /// List CSP weather types
+    /// </summary>
+    [Command("cspweather")]
+    public void ListCspWeatherTypes()
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var types = _plugin.GetCspWeatherTypes();
+        Reply($"[CSP Weather Types]\n{string.Join(", ", types)}");
+    }
+    
+    // === RESTRICTIONS ===
+    
+    /// <summary>
+    /// Set ballast and restrictor for a player
+    /// </summary>
+    [Command("restrict")]
+    public void SetRestriction(ACTcpClient target, int restrictor, int ballast)
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var result = _plugin.SetRestriction(new SetRestrictionRequest
+        {
+            TargetSessionId = target.SessionId,
+            Restrictor = restrictor,
+            BallastKg = ballast,
+            AdminSteamId = MySteamId
+        });
+        
+        Reply(result.Message);
+    }
+    
+    // === WHITELIST ===
+    
+    /// <summary>
+    /// Add Steam ID to whitelist
+    /// </summary>
+    [Command("whitelist")]
+    public void AddToWhitelist(string steamId)
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var result = _plugin.AddToWhitelist(steamId, MySteamId);
+        Reply(result.Message);
+    }
+    
+    /// <summary>
+    /// Remove Steam ID from whitelist
+    /// </summary>
+    [Command("unwhitelist")]
+    public void RemoveFromWhitelist(string steamId)
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var result = _plugin.RemoveFromWhitelist(steamId, MySteamId);
+        Reply(result.Message);
+    }
+    
+    /// <summary>
+    /// Show whitelist
+    /// </summary>
+    [Command("whitelistshow")]
+    public void ShowWhitelist()
+    {
+        if (!_plugin.HasPermission(MySteamId, AdminLevel.Admin))
+        {
+            Reply("Requires Admin level.");
+            return;
+        }
+        
+        var whitelist = _plugin.GetWhitelist();
+        
+        if (whitelist.Count == 0)
+        {
+            Reply("Whitelist is empty.");
+            return;
+        }
+        
+        string message = $"[Whitelist: {whitelist.Count} entries]\n";
+        foreach (var entry in whitelist.Take(10))
+        {
+            message += $"{entry.SteamId} ({entry.Name ?? "Unknown"})\n";
+        }
+        
+        if (whitelist.Count > 10)
+        {
+            message += $"...and {whitelist.Count - 10} more";
         }
         
         Reply(message.TrimEnd());

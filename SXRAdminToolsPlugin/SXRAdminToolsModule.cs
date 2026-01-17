@@ -1,12 +1,12 @@
 using AssettoServer.Server.Plugin;
 using Autofac;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Autofac module for Admin Tools Plugin dependency injection
 /// </summary>
-public class SXRSXRAdminToolsModule : AssettoServerModule<SXRAdminToolsConfiguration>
+public class SXRAdminToolsModule : AssettoServerModule<SXRAdminToolsConfiguration>
 {
     protected override void Load(ContainerBuilder builder)
     {
@@ -28,6 +28,10 @@ public class SXRSXRAdminToolsModule : AssettoServerModule<SXRAdminToolsConfigura
         
         // HTTP API controller
         builder.RegisterType<SXRAdminToolsController>()
+            .AsSelf();
+        
+        // Command module
+        builder.RegisterType<SXRAdminCommandModule>()
             .AsSelf();
     }
 }

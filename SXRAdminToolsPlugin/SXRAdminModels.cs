@@ -1,4 +1,4 @@
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Admin permission levels
@@ -310,4 +310,64 @@ public class ServerEnvironment
     public string? WeatherDescription { get; set; }
     public float AmbientTemp { get; set; }
     public float RoadTemp { get; set; }
+}
+
+/// <summary>
+/// Server capabilities for feature availability checks
+/// Allows admin panel to show/hide sections based on what's available
+/// </summary>
+public class ServerCapabilities
+{
+    // === CORE ADMIN SYSTEMS (Always Available) ===
+    public bool PlayerManagement { get; set; } = true;
+    public bool BanSystem { get; set; } = true;
+    public bool AuditLog { get; set; } = true;
+    public bool TimeWeatherControl { get; set; } = true;
+    public bool WhitelistManagement { get; set; } = true;
+    
+    // === SXR PLUGIN INTEGRATIONS ===
+    // These are checked at runtime to see if plugins are loaded
+    
+    /// <summary>Player stats, XP, leveling, prestige system</summary>
+    public bool PlayerStatsAvailable { get; set; }
+    
+    /// <summary>Custom nameplates and driver info display</summary>
+    public bool NameplatesAvailable { get; set; }
+    
+    /// <summary>SP Battle highway racing system</summary>
+    public bool SPBattleAvailable { get; set; }
+    
+    /// <summary>Car lock/unlock system based on driver level</summary>
+    public bool CarLockAvailable { get; set; }
+    
+    // === PLANNED SYSTEMS (Not Yet Implemented) ===
+    
+    /// <summary>Club/team management system (PLANNED)</summary>
+    public bool ClubSystemAvailable { get; set; }
+    
+    /// <summary>Time trials / time attack system (PLANNED)</summary>
+    public bool TimeTrialsAvailable { get; set; }
+    
+    /// <summary>Global rankings and leaderboards (PLANNED)</summary>
+    public bool RankingsAvailable { get; set; }
+    
+    /// <summary>Tournament management system (PLANNED)</summary>
+    public bool TournamentAvailable { get; set; }
+    
+    /// <summary>Economy / currency system (PLANNED)</summary>
+    public bool EconomyAvailable { get; set; }
+    
+    /// <summary>Achievement system (PLANNED)</summary>
+    public bool AchievementsAvailable { get; set; }
+    
+    // === FEATURE INFO ===
+    
+    /// <summary>Message to display for unavailable features</summary>
+    public string UnavailableMessage { get; set; } = "Coming Soon";
+    
+    /// <summary>Server version info</summary>
+    public string ServerVersion { get; set; } = "1.0.0";
+    
+    /// <summary>List of loaded SXR plugins</summary>
+    public List<string> LoadedPlugins { get; set; } = new();
 }

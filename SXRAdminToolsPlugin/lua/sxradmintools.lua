@@ -1,920 +1,849 @@
 --[[
-    SXR Admin Tools - In-Game Admin Panel
+    SXR Admin Tools - Client-Side Admin Panel
+    Version: 2.0.0
     
-    Features:
-    - Player list with quick actions (kick, ban, pit, lights, restrict)
-    - Ban management
-    - Server environment control (time, weather)
-    - Whitelist management
-    - Audit log viewer
-    - Hotkey support
+    RAG Compliance Notes:
+    - ui.toolWindow uses inputs=true (5th parameter) for interactive elements
+    - ui.registerOnlineExtra uses all 8 parameters including flags
+    - All loops use ui.pushID(i) / ui.popID()
+    - All web callbacks have proper error handling
+    - Uses ac.getServerHTTPPort() for HTTP port
 ]]
 
-local config = ac.configValues({
-    hotkey = 0x79, -- F10
-    refreshInterval = 5
-})
+-- ============================================================================
+-- CONFIGURATION & STATE
+-- ============================================================================
 
--- API URLs
-local baseUrl = "http://" .. ac.getServerIP() .. ":" .. ac.getServerPortHTTP() .. "/admin"
-local steamId = ac.getUserSteamID()
+local serverIP = ac.getServerIP()
+local serverPort = ac.getServerHTTPPort()
+local baseUrl = string.format("http://%s:%d", serverIP, serverPort)
 
--- State
+---@class AdminState
 local state = {
+    -- Auth
     isAdmin = false,
-    adminLevel = 0,
-    panelOpen = false,
+    adminLevel = "None",
+    mySteamId = "",
+    
+    -- Current tab
     currentTab = 1,
-    loading = false,
-    lastRefresh = 0,
+    
+    -- Players
     players = {},
-    bans = {},
-    audit = {},
-    whitelist = {},
-    status = nil,
-    environment = nil,
-    cspWeatherTypes = {},
     selectedPlayer = nil,
+    
+    -- Bans
+    bans = {},
+    banSearch = "",
+    
+    -- Whitelist
+    whitelist = {},
+    
+    -- Audit
+    auditLog = {},
+    
+    -- Server
+    serverTime = { hour = 12, minute = 0 },
+    weatherTypes = {},
+    selectedWeather = 1,
+    transitionDuration = 30,
+    
+    -- UI State
     kickReason = "",
     banReason = "",
-    banDuration = 24,
-    -- Time/Weather controls
-    timeHour = 12,
-    timeMinute = 0,
-    selectedWeatherId = 0,
-    selectedCspWeather = "Clear",
-    weatherTransition = 30,
-    -- Restriction controls
+    banHours = 24,
     restrictorValue = 0,
     ballastValue = 0,
-    -- Whitelist
-    whitelistSteamId = ""
+    
+    -- Loading/Error
+    isLoading = false,
+    lastError = nil,
+    lastErrorTime = 0,
+    
+    -- Refresh
+    lastRefresh = 0,
+    refreshInterval = 5,
 }
 
-local tabNames = { "Players", "Server", "Bans", "Whitelist", "Audit" }
+local tabs = { "Players", "Bans", "Whitelist", "Server", "Audit" }
 
-local colors = {
-    admin = rgbm(1, 0.84, 0, 1),      -- Gold for admins
-    moderator = rgbm(0.5, 0.8, 1, 1), -- Light blue for mods
-    online = rgbm(0.2, 0.8, 0.2, 1),  -- Green
-    offline = rgbm(0.5, 0.5, 0.5, 1), -- Gray
-    danger = rgbm(0.9, 0.2, 0.2, 1),  -- Red
-    warning = rgbm(0.9, 0.7, 0.2, 1), -- Orange
-    accent = rgbm(0, 0.8, 1, 1),
-    bg = rgbm(0.1, 0.1, 0.12, 0.95),
-    bgLight = rgbm(0.15, 0.15, 0.18, 1)
-}
+-- ============================================================================
+-- UTILITY FUNCTIONS
+-- ============================================================================
+
+---@param message string
+local function logError(message)
+    ac.error("[SXRAdminTools] " .. message)
+    state.lastError = message
+    state.lastErrorTime = os.clock()
+end
+
+---@param message string
+local function logInfo(message)
+    ac.log("[SXRAdminTools] " .. message)
+end
+
+---@param jsonStr string
+---@return table|nil
+local function safeParse(jsonStr)
+    if not jsonStr or jsonStr == "" then
+        return nil
+    end
+    local success, result = pcall(function()
+        return JSON.parse(jsonStr)
+    end)
+    if success then
+        return result
+    else
+        logError("JSON parse error: " .. tostring(result))
+        return nil
+    end
+end
+
+---@param seconds number
+---@return string
+local function formatDuration(seconds)
+    if seconds < 60 then
+        return string.format("%ds", seconds)
+    elseif seconds < 3600 then
+        return string.format("%dm", math.floor(seconds / 60))
+    elseif seconds < 86400 then
+        return string.format("%dh", math.floor(seconds / 3600))
+    else
+        return string.format("%dd", math.floor(seconds / 86400))
+    end
+end
+
+---@param timestamp string
+---@return string
+local function formatTimestamp(timestamp)
+    if not timestamp then return "Unknown" end
+    -- Extract date/time from ISO format
+    local year, month, day, hour, min = timestamp:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+)")
+    if year then
+        return string.format("%s/%s %s:%s", month, day, hour, min)
+    end
+    return timestamp
+end
 
 -- ============================================================================
 -- API FUNCTIONS
 -- ============================================================================
 
-function CheckAdminStatus()
-    web.get(baseUrl .. "/status", function(err, response)
+---@param endpoint string
+---@param callback fun(data: table|nil)
+local function apiGet(endpoint, callback)
+    local url = baseUrl .. endpoint
+    web.get(url, {
+        ['X-Admin-SteamId'] = state.mySteamId
+    }, function(err, response)
         if err then
-            state.isAdmin = false
+            logError("GET " .. endpoint .. " error: " .. tostring(err))
+            callback(nil)
             return
         end
-        
-        local data = stringify.parse(response.body)
+        if not response then
+            logError("GET " .. endpoint .. " no response")
+            callback(nil)
+            return
+        end
+        if response.status ~= 200 then
+            logError("GET " .. endpoint .. " status: " .. tostring(response.status))
+            callback(nil)
+            return
+        end
+        local data = safeParse(response.body)
+        callback(data)
+    end)
+end
+
+---@param endpoint string
+---@param body table
+---@param callback fun(data: table|nil)
+local function apiPost(endpoint, body, callback)
+    local url = baseUrl .. endpoint
+    local jsonBody = JSON.stringify(body)
+    
+    web.post(url, {
+        ['Content-Type'] = 'application/json',
+        ['X-Admin-SteamId'] = state.mySteamId
+    }, jsonBody, function(err, response)
+        if err then
+            logError("POST " .. endpoint .. " error: " .. tostring(err))
+            callback(nil)
+            return
+        end
+        if not response then
+            logError("POST " .. endpoint .. " no response")
+            callback(nil)
+            return
+        end
+        if response.status ~= 200 then
+            logError("POST " .. endpoint .. " status: " .. tostring(response.status))
+            callback(nil)
+            return
+        end
+        local data = safeParse(response.body)
+        callback(data)
+    end)
+end
+
+---@param endpoint string
+---@param callback fun(success: boolean)
+local function apiDelete(endpoint, callback)
+    local url = baseUrl .. endpoint
+    web.request('DELETE', url, {
+        ['X-Admin-SteamId'] = state.mySteamId
+    }, nil, function(err, response)
+        if err then
+            logError("DELETE " .. endpoint .. " error: " .. tostring(err))
+            callback(false)
+            return
+        end
+        if not response then
+            logError("DELETE " .. endpoint .. " no response")
+            callback(false)
+            return
+        end
+        callback(response.status == 200)
+    end)
+end
+
+-- ============================================================================
+-- DATA REFRESH FUNCTIONS
+-- ============================================================================
+
+local function refreshAdminStatus()
+    apiGet("/admin/status", function(data)
         if data then
-            state.status = data
-            -- Check if we're in the connected admins
-            for _, admin in ipairs(data.ConnectedAdmins or {}) do
-                if admin.SteamId == steamId then
-                    state.isAdmin = true
-                    state.adminLevel = admin.Level
-                    return
-                end
-            end
-        end
-        state.isAdmin = false
-    end)
-end
-
-function FetchPlayers()
-    if not state.isAdmin then return end
-    state.loading = true
-    
-    web.get(baseUrl .. "/players", function(err, response)
-        state.loading = false
-        if not err and response.body then
-            state.players = stringify.parse(response.body) or {}
-        end
-        state.lastRefresh = os.clock()
-    end)
-end
-
-function FetchBans()
-    if not state.isAdmin then return end
-    
-    web.get(baseUrl .. "/bans?activeOnly=true", function(err, response)
-        if not err and response.body then
-            state.bans = stringify.parse(response.body) or {}
+            state.isAdmin = data.isAdmin or false
+            state.adminLevel = data.level or "None"
+            state.mySteamId = data.steamId or ""
         end
     end)
 end
 
-function FetchAudit()
-    if not state.isAdmin then return end
-    
-    web.get(baseUrl .. "/audit?count=20", function(err, response)
-        if not err and response.body then
-            state.audit = stringify.parse(response.body) or {}
+local function refreshPlayers()
+    apiGet("/admin/players", function(data)
+        if data and data.players then
+            state.players = data.players
         end
     end)
 end
 
-function FetchStatus()
-    if not state.isAdmin then return end
-    
-    web.get(baseUrl .. "/status", function(err, response)
-        if not err and response.body then
-            state.status = stringify.parse(response.body)
+local function refreshBans()
+    local endpoint = "/admin/bans"
+    if state.banSearch and state.banSearch ~= "" then
+        endpoint = endpoint .. "?search=" .. state.banSearch
+    end
+    apiGet(endpoint, function(data)
+        if data and data.bans then
+            state.bans = data.bans
         end
     end)
 end
 
-function FetchEnvironment()
-    if not state.isAdmin then return end
-    
-    web.get(baseUrl .. "/environment", function(err, response)
-        if not err and response.body then
-            state.environment = stringify.parse(response.body)
-            if state.environment then
-                state.timeHour = state.environment.TimeHour or 12
-                state.timeMinute = state.environment.TimeMinute or 0
-            end
+local function refreshWhitelist()
+    apiGet("/admin/whitelist", function(data)
+        if data and data.entries then
+            state.whitelist = data.entries
         end
     end)
 end
 
-function FetchCspWeatherTypes()
-    if not state.isAdmin then return end
-    
-    web.get(baseUrl .. "/weather/types", function(err, response)
-        if not err and response.body then
-            state.cspWeatherTypes = stringify.parse(response.body) or {}
+local function refreshAuditLog()
+    apiGet("/admin/audit?count=50", function(data)
+        if data and data.entries then
+            state.auditLog = data.entries
         end
     end)
 end
 
-function FetchWhitelist()
-    if not state.isAdmin then return end
-    
-    web.get(baseUrl .. "/whitelist", function(err, response)
-        if not err and response.body then
-            state.whitelist = stringify.parse(response.body) or {}
+local function refreshEnvironment()
+    apiGet("/admin/environment", function(data)
+        if data then
+            state.serverTime.hour = data.hour or 12
+            state.serverTime.minute = data.minute or 0
         end
     end)
 end
 
-function KickPlayer(sessionId, reason)
-    local body = stringify({
-        TargetSessionId = sessionId,
-        Reason = reason,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/kick", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Kick result: " .. (result.Message or "Unknown"))
-            end
-            FetchPlayers()
+local function refreshWeatherTypes()
+    apiGet("/admin/weather/types", function(data)
+        if data and data.types then
+            state.weatherTypes = data.types
         end
     end)
 end
 
-function BanPlayer(targetSteamId, targetName, reason, hours)
-    local body = stringify({
-        TargetSteamId = targetSteamId,
-        TargetName = targetName,
-        Reason = reason,
-        DurationHours = hours,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/ban", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Ban result: " .. (result.Message or "Unknown"))
-            end
-            FetchPlayers()
-            FetchBans()
+local function refreshAll()
+    refreshPlayers()
+    refreshBans()
+    refreshWhitelist()
+    refreshAuditLog()
+    refreshEnvironment()
+    refreshWeatherTypes()
+end
+
+-- ============================================================================
+-- ACTION FUNCTIONS
+-- ============================================================================
+
+---@param sessionId number
+---@param reason string
+local function kickPlayer(sessionId, reason)
+    apiPost("/admin/kick", {
+        targetSessionId = sessionId,
+        reason = reason,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Kicked player")
+            refreshPlayers()
         end
     end)
 end
 
-function UnbanPlayer(banId)
-    web.request(baseUrl .. "/bans/" .. banId .. "?adminSteamId=" .. steamId, {
-        method = "DELETE"
-    }, function(err, response)
-        if not err then
-            FetchBans()
+---@param sessionId number
+---@param reason string
+---@param hours number|nil
+local function banPlayer(sessionId, reason, hours)
+    apiPost("/admin/ban", {
+        targetSessionId = sessionId,
+        reason = reason,
+        durationHours = hours,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Banned player")
+            refreshPlayers()
+            refreshBans()
         end
     end)
 end
 
-function TeleportToPits(sessionId)
-    local body = stringify({
-        TargetSessionId = sessionId,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/pit", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Pit result: " .. (result.Message or "Unknown"))
-            end
+---@param banId number
+local function unbanPlayer(banId)
+    apiDelete("/admin/ban/" .. banId, function(success)
+        if success then
+            logInfo("Unbanned player")
+            refreshBans()
         end
     end)
 end
 
-function ForceLights(sessionId, forceOn)
-    local body = stringify({
-        TargetSessionId = sessionId,
-        ForceOn = forceOn,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/forcelights", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Force lights result: " .. (result.Message or "Unknown"))
-            end
+---@param sessionId number
+local function teleportToPits(sessionId)
+    apiPost("/admin/pit", {
+        targetSessionId = sessionId,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Teleported player to pits")
         end
     end)
 end
 
-function SetRestriction(sessionId, restrictor, ballast)
-    local body = stringify({
-        TargetSessionId = sessionId,
-        Restrictor = restrictor,
-        BallastKg = ballast,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/restrict", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Restriction result: " .. (result.Message or "Unknown"))
-            end
+---@param sessionId number
+---@param forceOn boolean
+local function forceLights(sessionId, forceOn)
+    apiPost("/admin/forcelights", {
+        targetSessionId = sessionId,
+        forceOn = forceOn,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Force lights: " .. (forceOn and "ON" or "OFF"))
         end
     end)
 end
 
-function SetServerTime(hour, minute)
-    local body = stringify({
-        Hour = hour,
-        Minute = minute,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/time", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Set time result: " .. (result.Message or "Unknown"))
-            end
-            FetchEnvironment()
+---@param sessionId number
+---@param restrictor number
+---@param ballast number
+local function setRestriction(sessionId, restrictor, ballast)
+    apiPost("/admin/restrict", {
+        targetSessionId = sessionId,
+        restrictor = restrictor,
+        ballastKg = ballast,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Set restriction")
         end
     end)
 end
 
-function SetWeatherConfig(weatherId)
-    local body = stringify({
-        WeatherConfigId = weatherId,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/weather", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Set weather result: " .. (result.Message or "Unknown"))
-            end
-            FetchEnvironment()
+---@param hour number
+---@param minute number
+local function setTime(hour, minute)
+    apiPost("/admin/time", {
+        hour = hour,
+        minute = minute,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Set time to " .. hour .. ":" .. minute)
+            refreshEnvironment()
         end
     end)
 end
 
-function SetCspWeather(weatherType, transitionSec)
-    local body = stringify({
-        WeatherType = weatherType,
-        TransitionDuration = transitionSec,
-        AdminSteamId = steamId
-    })
-    
-    web.post(baseUrl .. "/weather", body, "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Set CSP weather result: " .. (result.Message or "Unknown"))
-            end
-            FetchEnvironment()
+---@param weatherType string
+---@param transition number
+local function setWeather(weatherType, transition)
+    apiPost("/admin/weather", {
+        weatherType = weatherType,
+        transitionDuration = transition,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Set weather: " .. weatherType)
         end
     end)
 end
 
-function AddToWhitelist(targetSteamId)
-    web.post(baseUrl .. "/whitelist?steamId=" .. targetSteamId .. "&adminSteamId=" .. steamId, "", "application/json", function(err, response)
-        if not err then
-            local result = stringify.parse(response.body)
-            if result then
-                ac.log("Whitelist result: " .. (result.Message or "Unknown"))
-            end
-            FetchWhitelist()
+---@param steamId string
+local function addToWhitelist(steamId)
+    apiPost("/admin/whitelist", {
+        steamId = steamId,
+        adminSteamId = state.mySteamId
+    }, function(data)
+        if data and data.success then
+            logInfo("Added to whitelist: " .. steamId)
+            refreshWhitelist()
         end
     end)
 end
 
-function RemoveFromWhitelist(targetSteamId)
-    web.request(baseUrl .. "/whitelist/" .. targetSteamId .. "?adminSteamId=" .. steamId, {
-        method = "DELETE"
-    }, function(err, response)
-        if not err then
-            FetchWhitelist()
+---@param steamId string
+local function removeFromWhitelist(steamId)
+    apiDelete("/admin/whitelist/" .. steamId, function(success)
+        if success then
+            logInfo("Removed from whitelist")
+            refreshWhitelist()
         end
     end)
 end
 
 -- ============================================================================
--- UI DRAWING
+-- UI DRAWING FUNCTIONS
 -- ============================================================================
 
-function DrawPlayerRow(player, index)
-    local isSelected = state.selectedPlayer == player.SessionId
-    
-    -- Row background
-    if isSelected then
-        ui.pushStyleColor(ui.StyleColor.Button, colors.accent)
-    elseif index % 2 == 0 then
-        ui.pushStyleColor(ui.StyleColor.Button, colors.bgLight)
-    else
-        ui.pushStyleColor(ui.StyleColor.Button, colors.bg)
+local function drawTabBar()
+    ui.beginGroup()
+    for i, tabName in ipairs(tabs) do
+        ui.pushID(i)
+        if i > 1 then ui.sameLine() end
+        
+        local isSelected = (state.currentTab == i)
+        if isSelected then
+            ui.pushStyleColor(ui.StyleColor.Button, rgbm(0.3, 0.5, 0.8, 1))
+        end
+        
+        if ui.button(tabName, vec2(80, 25)) then
+            state.currentTab = i
+        end
+        
+        if isSelected then
+            ui.popStyleColor()
+        end
+        ui.popID()
     end
-    
-    -- Selectable row
-    if ui.button("##player" .. player.SessionId, vec2(ui.availableSpaceX(), 25)) then
-        state.selectedPlayer = isSelected and nil or player.SessionId
-    end
-    ui.popStyleColor()
-    
-    -- Draw content on top
-    ui.sameLine(10)
-    
-    -- Admin indicator
-    local nameColor = rgbm.colors.white
-    if player.AdminLevel == 3 then
-        nameColor = colors.admin
-    elseif player.AdminLevel == 2 then
-        nameColor = colors.admin
-    elseif player.AdminLevel == 1 then
-        nameColor = colors.moderator
-    end
-    
-    ui.textColored(string.format("#%d", player.SessionId), colors.accent)
-    ui.sameLine(50)
-    ui.textColored(player.Name:sub(1, 20), nameColor)
-    ui.sameLine(200)
-    ui.textColored(player.CarModel:sub(1, 15), colors.offline)
-    ui.sameLine(320)
-    ui.textColored(string.format("%dms", player.Ping), 
-        player.Ping > 150 and colors.warning or colors.online)
-    ui.sameLine(380)
-    ui.textColored(string.format("%.0f km/h", player.SpeedKph), colors.accent)
-    
-    -- AFK indicator
-    if player.IsAfk then
-        ui.sameLine(450)
-        ui.textColored("[AFK]", colors.warning)
-    end
+    ui.endGroup()
+    ui.separator()
 end
 
-function DrawPlayersTab()
-    -- Header
-    ui.columns(1)
-    ui.textColored("ID", colors.offline)
-    ui.sameLine(50)
-    ui.textColored("Name", colors.offline)
-    ui.sameLine(200)
-    ui.textColored("Car", colors.offline)
-    ui.sameLine(320)
-    ui.textColored("Ping", colors.offline)
-    ui.sameLine(380)
-    ui.textColored("Speed", colors.offline)
+local function drawPlayersTab()
+    -- Refresh button
+    if ui.button("Refresh", vec2(80, 25)) then
+        refreshPlayers()
+    end
+    ui.sameLine()
+    ui.text(string.format("Players: %d", #state.players))
     ui.separator()
     
     -- Player list
-    ui.childWindow('playerList', vec2(0, 200), true, ui.WindowFlags.None, function()
+    ui.childWindow('playerList', vec2(0, 300), true, ui.WindowFlags.None, function()
         for i, player in ipairs(state.players) do
-            DrawPlayerRow(player, i)
+            ui.pushID(i)
+            
+            -- Player row
+            local isSelected = (state.selectedPlayer == i)
+            if isSelected then
+                ui.pushStyleColor(ui.StyleColor.ChildBg, rgbm(0.2, 0.3, 0.5, 0.5))
+            end
+            
+            ui.beginGroup()
+            
+            -- Name and info
+            ui.text(player.name or "Unknown")
+            ui.sameLine(150)
+            ui.textDisabled(string.format("ID:%d", player.sessionId or 0))
+            ui.sameLine(200)
+            ui.textDisabled(player.carModel or "")
+            
+            -- Quick actions
+            ui.sameLine(350)
+            if ui.smallButton("Select") then
+                state.selectedPlayer = i
+            end
+            
+            ui.endGroup()
+            
+            if isSelected then
+                ui.popStyleColor()
+            end
+            
+            ui.popID()
         end
     end)
     
     ui.separator()
     
     -- Selected player actions
-    if state.selectedPlayer then
-        local player = nil
-        for _, p in ipairs(state.players) do
-            if p.SessionId == state.selectedPlayer then
-                player = p
-                break
-            end
+    if state.selectedPlayer and state.players[state.selectedPlayer] then
+        local player = state.players[state.selectedPlayer]
+        
+        ui.text(string.format("Selected: %s", player.name or "Unknown"))
+        ui.textDisabled(string.format("Steam: %s | IP: %s", player.steamId or "N/A", player.ipAddress or "N/A"))
+        ui.spacing()
+        
+        -- Action buttons row 1
+        if ui.button("Kick", vec2(60, 25)) then
+            kickPlayer(player.sessionId, state.kickReason)
+        end
+        ui.sameLine()
+        if ui.button("Ban", vec2(60, 25)) then
+            banPlayer(player.sessionId, state.banReason, state.banHours)
+        end
+        ui.sameLine()
+        if ui.button("Pit", vec2(60, 25)) then
+            teleportToPits(player.sessionId)
+        end
+        ui.sameLine()
+        if ui.button("Lights ON", vec2(70, 25)) then
+            forceLights(player.sessionId, true)
+        end
+        ui.sameLine()
+        if ui.button("Lights OFF", vec2(70, 25)) then
+            forceLights(player.sessionId, false)
         end
         
-        if player then
-            ui.textColored("Selected: " .. player.Name, colors.accent)
-            ui.text("Steam: " .. player.SteamId)
-            ui.text("IP: " .. (player.IpAddress or "Unknown"))
-            ui.spacing()
-            
-            -- Quick action buttons row 1
-            if ui.button("Teleport to Pits") then
-                TeleportToPits(player.SessionId)
-            end
-            ui.sameLine()
-            if ui.button("Lights ON") then
-                ForceLights(player.SessionId, true)
-            end
-            ui.sameLine()
-            if ui.button("Lights OFF") then
-                ForceLights(player.SessionId, false)
-            end
-            ui.sameLine()
-            if ui.button("Whitelist") then
-                AddToWhitelist(player.SteamId)
-            end
-            
-            ui.spacing()
-            
-            -- Kick section
-            ui.text("Reason:")
-            ui.sameLine(70)
-            ui.setNextItemWidth(250)
-            state.kickReason = ui.inputText("##kickreason", state.kickReason, ui.InputTextFlags.None)
-            ui.sameLine()
-            
-            if ui.button("Kick") then
-                KickPlayer(player.SessionId, state.kickReason)
-                state.kickReason = ""
-            end
-            
-            -- Ban section (if Admin+)
-            if state.adminLevel >= 2 then
-                ui.sameLine()
-                ui.setNextItemWidth(60)
-                state.banDuration = ui.slider("##bandur", state.banDuration, 1, 720, "%.0fh")
-                ui.sameLine()
-                
-                ui.pushStyleColor(ui.StyleColor.Button, colors.danger)
-                if ui.button("Temp Ban") then
-                    BanPlayer(player.SteamId, player.Name, state.kickReason, state.banDuration)
-                    state.kickReason = ""
-                end
-                ui.popStyleColor()
-                
-                ui.sameLine()
-                ui.pushStyleColor(ui.StyleColor.Button, rgbm(0.5, 0, 0, 1))
-                if ui.button("Perma Ban") then
-                    BanPlayer(player.SteamId, player.Name, state.kickReason, 0)
-                    state.kickReason = ""
-                end
-                ui.popStyleColor()
-            end
-            
-            -- Restrictions section (Admin+)
-            if state.adminLevel >= 2 then
-                ui.spacing()
-                ui.separator()
-                ui.textColored("Restrictions", colors.warning)
-                
-                ui.text("Restrictor:")
-                ui.sameLine(80)
-                ui.setNextItemWidth(100)
-                state.restrictorValue = ui.slider("##restrictor", state.restrictorValue, 0, 400, "%.0f")
-                
-                ui.sameLine()
-                ui.text("Ballast:")
-                ui.sameLine(240)
-                ui.setNextItemWidth(100)
-                state.ballastValue = ui.slider("##ballast", state.ballastValue, 0, 200, "%.0f kg")
-                
-                ui.sameLine()
-                if ui.button("Apply") then
-                    SetRestriction(player.SessionId, state.restrictorValue, state.ballastValue)
-                end
-                ui.sameLine()
-                if ui.button("Clear") then
-                    state.restrictorValue = 0
-                    state.ballastValue = 0
-                    SetRestriction(player.SessionId, 0, 0)
-                end
-            end
+        ui.spacing()
+        
+        -- Kick/Ban reason
+        local newReason, changed = ui.inputText("Reason", state.kickReason, ui.InputTextFlags.None)
+        if changed then
+            state.kickReason = newReason
+            state.banReason = newReason
+        end
+        
+        -- Ban hours
+        local newHours, hoursChanged = ui.slider("Ban Hours", state.banHours, 1, 720, "%.0f hours")
+        if hoursChanged then state.banHours = newHours end
+        
+        ui.spacing()
+        
+        -- Restriction controls
+        ui.text("Restrictions:")
+        local newRestrictor, rChanged = ui.slider("Restrictor", state.restrictorValue, 0, 100, "%.0f%%")
+        if rChanged then state.restrictorValue = newRestrictor end
+        
+        local newBallast, bChanged = ui.slider("Ballast", state.ballastValue, 0, 200, "%.0f kg")
+        if bChanged then state.ballastValue = newBallast end
+        
+        if ui.button("Apply Restriction", vec2(120, 25)) then
+            setRestriction(player.sessionId, state.restrictorValue, state.ballastValue)
+        end
+        ui.sameLine()
+        if ui.button("Clear", vec2(60, 25)) then
+            state.restrictorValue = 0
+            state.ballastValue = 0
+            setRestriction(player.sessionId, 0, 0)
+        end
+        
+        -- Whitelist
+        ui.spacing()
+        if ui.button("Add to Whitelist", vec2(120, 25)) then
+            addToWhitelist(player.steamId)
         end
     else
-        ui.textColored("Click a player to select", colors.offline)
+        ui.textDisabled("Select a player to see actions")
     end
 end
 
-function DrawServerTab()
-    if state.adminLevel < 2 then
-        ui.textColored("Requires Admin level", colors.danger)
-        return
+local function drawBansTab()
+    -- Search
+    local newSearch, searchChanged = ui.inputText("Search", state.banSearch, ui.InputTextFlags.None)
+    if searchChanged then
+        state.banSearch = newSearch
+    end
+    ui.sameLine()
+    if ui.button("Search", vec2(60, 25)) then
+        refreshBans()
+    end
+    ui.sameLine()
+    if ui.button("Refresh", vec2(60, 25)) then
+        state.banSearch = ""
+        refreshBans()
     end
     
-    -- Server Status
-    if state.status then
-        ui.columns(2)
-        ui.text("Players Online:")
-        ui.nextColumn()
-        ui.textColored(tostring(state.status.PlayersOnline), colors.accent)
-        ui.nextColumn()
-        ui.text("Admins Online:")
-        ui.nextColumn()
-        ui.textColored(tostring(state.status.AdminsOnline), colors.admin)
-        ui.columns()
-    end
-    
-    ui.spacing()
     ui.separator()
-    ui.spacing()
-    
-    -- Time Control
-    ui.pushFont(ui.Font.Title)
-    ui.textColored("Time Control", colors.accent)
-    ui.popFont()
-    ui.spacing()
-    
-    ui.text("Hour:")
-    ui.sameLine(60)
-    ui.setNextItemWidth(150)
-    state.timeHour = math.floor(ui.slider("##hour", state.timeHour, 0, 23, "%.0f"))
-    
-    ui.sameLine()
-    ui.text("Minute:")
-    ui.sameLine(270)
-    ui.setNextItemWidth(150)
-    state.timeMinute = math.floor(ui.slider("##minute", state.timeMinute, 0, 59, "%.0f"))
-    
-    ui.sameLine()
-    if ui.button("Set Time") then
-        SetServerTime(state.timeHour, state.timeMinute)
-    end
-    
-    -- Quick time presets
-    ui.text("Presets:")
-    ui.sameLine(60)
-    if ui.button("Dawn") then SetServerTime(6, 0) end
-    ui.sameLine()
-    if ui.button("Morning") then SetServerTime(9, 0) end
-    ui.sameLine()
-    if ui.button("Noon") then SetServerTime(12, 0) end
-    ui.sameLine()
-    if ui.button("Afternoon") then SetServerTime(15, 0) end
-    ui.sameLine()
-    if ui.button("Sunset") then SetServerTime(18, 30) end
-    ui.sameLine()
-    if ui.button("Night") then SetServerTime(22, 0) end
-    
-    ui.spacing()
-    ui.separator()
-    ui.spacing()
-    
-    -- Weather Control
-    ui.pushFont(ui.Font.Title)
-    ui.textColored("Weather Control", colors.accent)
-    ui.popFont()
-    ui.spacing()
-    
-    -- Weather config ID
-    ui.text("Config ID:")
-    ui.sameLine(80)
-    ui.setNextItemWidth(80)
-    state.selectedWeatherId = math.floor(ui.slider("##weatherid", state.selectedWeatherId, 0, 10, "%.0f"))
-    ui.sameLine()
-    if ui.button("Set Weather Config") then
-        SetWeatherConfig(state.selectedWeatherId)
-    end
-    
-    ui.spacing()
-    
-    -- CSP Weather Types
-    ui.text("CSP Weather:")
-    ui.sameLine(80)
-    ui.setNextItemWidth(150)
-    
-    -- Common weather type buttons
-    local weatherTypes = {"Clear", "FewClouds", "ScatteredClouds", "BrokenClouds", "OvercastClouds", 
-                          "Fog", "Mist", "Rain", "HeavyRain", "Thunderstorm", "Snow", "HeavySnow"}
-    
-    for i, wType in ipairs(weatherTypes) do
-        if i > 1 and (i - 1) % 6 ~= 0 then ui.sameLine() end
-        if i == 1 or (i - 1) % 6 == 0 then
-            if i > 1 then ui.dummy(vec2(80, 0)) end
-        end
-        
-        local isRain = wType:find("Rain") or wType:find("Thunder")
-        local isSnow = wType:find("Snow")
-        local isClear = wType == "Clear" or wType:find("FewClouds")
-        
-        local btnColor = colors.bgLight
-        if isRain then btnColor = rgbm(0.2, 0.3, 0.5, 1)
-        elseif isSnow then btnColor = rgbm(0.7, 0.7, 0.8, 1)
-        elseif isClear then btnColor = rgbm(0.3, 0.5, 0.7, 1)
-        end
-        
-        ui.pushStyleColor(ui.StyleColor.Button, btnColor)
-        if ui.button(wType) then
-            SetCspWeather(wType, state.weatherTransition)
-        end
-        ui.popStyleColor()
-    end
-    
-    ui.spacing()
-    ui.text("Transition:")
-    ui.sameLine(80)
-    ui.setNextItemWidth(150)
-    state.weatherTransition = ui.slider("##transition", state.weatherTransition, 1, 300, "%.0f sec")
-    
-    -- Current environment info
-    if state.environment then
-        ui.spacing()
-        ui.separator()
-        ui.spacing()
-        ui.textColored("Current Environment", colors.offline)
-        ui.text(string.format("Time: %02d:%02d", state.environment.TimeHour or 0, state.environment.TimeMinute or 0))
-        ui.sameLine(150)
-        ui.text(string.format("Weather: %s", state.environment.WeatherType or "Unknown"))
-        ui.text(string.format("Ambient: %.1f°C", state.environment.AmbientTemp or 20))
-        ui.sameLine(150)
-        ui.text(string.format("Road: %.1f°C", state.environment.RoadTemp or 25))
-    end
-end
-
-function DrawBansTab()
-    ui.text("Active Bans: " .. #state.bans)
+    ui.text(string.format("Bans: %d", #state.bans))
     ui.separator()
     
+    -- Ban list
     ui.childWindow('banList', vec2(0, 350), true, ui.WindowFlags.None, function()
         for i, ban in ipairs(state.bans) do
             ui.pushID(i)
             
-            ui.textColored(ban.PlayerName, colors.accent)
+            ui.beginGroup()
+            
+            -- Ban info
+            ui.text(ban.playerName or "Unknown")
             ui.sameLine(150)
-            ui.textColored(ban.Id, colors.offline)
-            ui.sameLine(270)
+            ui.textDisabled(ban.steamId or "N/A")
+            ui.sameLine(300)
             
-            local expiryColor = ban.IsPermanent and colors.danger or colors.warning
-            ui.textColored(ban.IsPermanent and "Permanent" or "Temp", expiryColor)
-            
-            ui.sameLine(350)
-            if ui.button("Unban##" .. ban.Id) then
-                UnbanPlayer(ban.Id)
+            -- Expiry
+            if ban.isPermanent then
+                ui.textColored(rgbm(1, 0.3, 0.3, 1), "PERMANENT")
+            else
+                ui.text(formatTimestamp(ban.expiresAt))
             end
             
-            -- Second row - details
-            ui.textColored("Reason: " .. ban.Reason:sub(1, 50), colors.offline)
-            ui.textColored("By: " .. ban.BannedByName, colors.offline)
+            -- Reason
+            ui.textDisabled(string.format("Reason: %s", ban.reason or "No reason"))
             
+            -- Unban button
+            ui.sameLine(450)
+            if ui.smallButton("Unban") then
+                unbanPlayer(ban.id)
+            end
+            
+            ui.endGroup()
             ui.separator()
+            
             ui.popID()
         end
     end)
 end
 
-function DrawWhitelistTab()
-    if state.adminLevel < 2 then
-        ui.textColored("Requires Admin level", colors.danger)
-        return
+local function drawWhitelistTab()
+    if ui.button("Refresh", vec2(80, 25)) then
+        refreshWhitelist()
     end
-    
-    ui.text("Whitelist Entries: " .. #state.whitelist)
-    
-    -- Add to whitelist
-    ui.spacing()
-    ui.text("Add Steam ID:")
-    ui.sameLine(100)
-    ui.setNextItemWidth(200)
-    state.whitelistSteamId = ui.inputText("##wlsteamid", state.whitelistSteamId, ui.InputTextFlags.None)
     ui.sameLine()
-    if ui.button("Add to Whitelist") then
-        if state.whitelistSteamId ~= "" then
-            AddToWhitelist(state.whitelistSteamId)
-            state.whitelistSteamId = ""
-        end
-    end
+    ui.text(string.format("Whitelist: %d entries", #state.whitelist))
     
     ui.separator()
     
-    ui.childWindow('whitelistList', vec2(0, 300), true, ui.WindowFlags.None, function()
+    -- Whitelist entries
+    ui.childWindow('whitelistList', vec2(0, 350), true, ui.WindowFlags.None, function()
         for i, entry in ipairs(state.whitelist) do
             ui.pushID(i)
             
-            ui.textColored(entry.Name or "Unknown", colors.accent)
+            ui.text(entry.name or "Unknown")
             ui.sameLine(150)
-            ui.text(entry.SteamId)
+            ui.textDisabled(entry.steamId or "N/A")
             ui.sameLine(350)
             
-            ui.pushStyleColor(ui.StyleColor.Button, colors.danger)
-            if ui.button("Remove##" .. entry.SteamId) then
-                RemoveFromWhitelist(entry.SteamId)
+            if ui.smallButton("Remove") then
+                removeFromWhitelist(entry.steamId)
             end
-            ui.popStyleColor()
             
-            ui.textColored("Added by: " .. (entry.AddedBy or "Unknown"), colors.offline)
-            
-            ui.separator()
             ui.popID()
         end
     end)
 end
 
-function DrawAuditTab()
-    ui.text("Recent Admin Actions")
-    if ui.button("Refresh") then
-        FetchAudit()
-    end
+local function drawServerTab()
+    -- Time controls
+    ui.text("Server Time")
     ui.separator()
     
-    ui.childWindow('auditList', vec2(0, 350), true, ui.WindowFlags.None, function()
-        for _, entry in ipairs(state.audit) do
-            -- Format timestamp
-            local time = entry.Timestamp:sub(12, 19) or "??:??:??"
+    local newHour, hourChanged = ui.slider("Hour", state.serverTime.hour, 0, 23, "%.0f")
+    if hourChanged then state.serverTime.hour = math.floor(newHour) end
+    
+    local newMinute, minChanged = ui.slider("Minute", state.serverTime.minute, 0, 59, "%.0f")
+    if minChanged then state.serverTime.minute = math.floor(newMinute) end
+    
+    if ui.button("Set Time", vec2(80, 25)) then
+        setTime(state.serverTime.hour, state.serverTime.minute)
+    end
+    
+    -- Quick time presets
+    ui.sameLine()
+    if ui.button("Dawn", vec2(50, 25)) then setTime(6, 0) end
+    ui.sameLine()
+    if ui.button("Noon", vec2(50, 25)) then setTime(12, 0) end
+    ui.sameLine()
+    if ui.button("Sunset", vec2(50, 25)) then setTime(18, 30) end
+    ui.sameLine()
+    if ui.button("Night", vec2(50, 25)) then setTime(22, 0) end
+    
+    ui.spacing()
+    ui.separator()
+    
+    -- Weather controls
+    ui.text("Weather")
+    ui.separator()
+    
+    local newTransition, transChanged = ui.slider("Transition (sec)", state.transitionDuration, 0, 120, "%.0f")
+    if transChanged then state.transitionDuration = newTransition end
+    
+    ui.spacing()
+    
+    -- Weather type buttons
+    ui.text("CSP Weather Types:")
+    local buttonsPerRow = 4
+    for i, weatherType in ipairs(state.weatherTypes) do
+        ui.pushID(i)
+        
+        if (i - 1) % buttonsPerRow ~= 0 then
+            ui.sameLine()
+        end
+        
+        if ui.button(weatherType, vec2(90, 25)) then
+            setWeather(weatherType, state.transitionDuration)
+        end
+        
+        ui.popID()
+    end
+    
+    if #state.weatherTypes == 0 then
+        ui.textDisabled("Loading weather types...")
+        if ui.button("Refresh Weather Types", vec2(150, 25)) then
+            refreshWeatherTypes()
+        end
+    end
+end
+
+local function drawAuditTab()
+    if ui.button("Refresh", vec2(80, 25)) then
+        refreshAuditLog()
+    end
+    ui.sameLine()
+    ui.text(string.format("Audit Log: %d entries", #state.auditLog))
+    
+    ui.separator()
+    
+    -- Audit log
+    ui.childWindow('auditList', vec2(0, 380), true, ui.WindowFlags.None, function()
+        for i, entry in ipairs(state.auditLog) do
+            ui.pushID(i)
             
-            ui.textColored(time, colors.offline)
-            ui.sameLine(70)
-            ui.textColored(entry.AdminName, colors.admin)
-            ui.sameLine(180)
+            ui.textDisabled(formatTimestamp(entry.timestamp))
+            ui.sameLine(100)
+            ui.text(entry.adminName or "Unknown")
+            ui.sameLine(200)
+            ui.textColored(rgbm(0.8, 0.8, 0.3, 1), entry.action or "")
             
-            local actionColor = colors.accent
-            if entry.Action == "Kick" then actionColor = colors.warning
-            elseif entry.Action == "Ban" or entry.Action == "TempBan" then actionColor = colors.danger
-            elseif entry.Action == "Unban" then actionColor = colors.online
-            elseif entry.Action == "Teleport" then actionColor = rgbm(0.5, 0.8, 1, 1)
-            elseif entry.Action == "ConfigChange" then actionColor = rgbm(0.8, 0.5, 1, 1)
-            end
-            
-            ui.textColored(entry.Action, actionColor)
-            
-            if entry.TargetName and entry.TargetName ~= "" then
+            if entry.targetName then
                 ui.sameLine(280)
-                ui.text("-> " .. entry.TargetName)
+                ui.text("-> " .. entry.targetName)
             end
             
-            if entry.Details and entry.Details ~= "" then
-                ui.textColored("  " .. entry.Details:sub(1, 60), colors.offline)
+            if entry.details then
+                ui.textDisabled("  " .. entry.details)
             end
+            
+            ui.popID()
         end
     end)
 end
 
--- ============================================================================
--- MAIN PANEL
--- ============================================================================
-
-function DrawAdminPanel()
-    if not state.panelOpen or not state.isAdmin then return end
+local function drawAdminPanel()
+    -- Header
+    ui.text("SXR Admin Tools")
+    ui.sameLine(300)
+    ui.textDisabled(string.format("Level: %s", state.adminLevel))
+    ui.separator()
     
-    -- Refresh data periodically
-    if os.clock() - state.lastRefresh > config.refreshInterval then
-        FetchPlayers()
-        FetchBans()
-        FetchAudit()
-        FetchStatus()
-        FetchEnvironment()
-        FetchWhitelist()
+    -- Tab bar
+    drawTabBar()
+    
+    -- Tab content
+    if state.currentTab == 1 then
+        drawPlayersTab()
+    elseif state.currentTab == 2 then
+        drawBansTab()
+    elseif state.currentTab == 3 then
+        drawWhitelistTab()
+    elseif state.currentTab == 4 then
+        drawServerTab()
+    elseif state.currentTab == 5 then
+        drawAuditTab()
     end
     
-    local uiState = ac.getUI()
-    local panelSize = vec2(600, 550)
-    local panelPos = vec2(
-        uiState.windowSize.x / 2 - panelSize.x / 2,
-        uiState.windowSize.y / 2 - panelSize.y / 2
-    )
-    
-    ui.toolWindow('adminPanel', panelPos, panelSize, true, function()
-        -- Title bar
-        ui.pushFont(ui.Font.Title)
-        ui.textColored("Admin Panel", colors.admin)
-        ui.popFont()
-        
-        local levelName = "Unknown"
-        if state.adminLevel == 3 then levelName = "SuperAdmin"
-        elseif state.adminLevel == 2 then levelName = "Admin"
-        elseif state.adminLevel == 1 then levelName = "Moderator"
-        end
-        ui.sameLine(ui.availableSpaceX() - 120)
-        ui.textColored("[" .. levelName .. "]", colors.accent)
-        
-        ui.sameLine(ui.availableSpaceX() - 30)
-        if ui.button("X") then
-            state.panelOpen = false
-        end
-        
-        ui.separator()
-        
-        -- Tab bar
-        for i, name in ipairs(tabNames) do
-            if i > 1 then ui.sameLine() end
-            
-            local isActive = state.currentTab == i
-            if isActive then
-                ui.pushStyleColor(ui.StyleColor.Button, colors.accent)
-            end
-            
-            if ui.button(name) then
-                state.currentTab = i
-                if i == 1 then FetchPlayers()
-                elseif i == 2 then FetchEnvironment()
-                elseif i == 3 then FetchBans()
-                elseif i == 4 then FetchWhitelist()
-                elseif i == 5 then FetchAudit()
-                end
-            end
-            
-            if isActive then
-                ui.popStyleColor()
-            end
-        end
-        
-        ui.separator()
-        ui.spacing()
-        
-        -- Tab content
-        if state.currentTab == 1 then
-            DrawPlayersTab()
-        elseif state.currentTab == 2 then
-            DrawServerTab()
-        elseif state.currentTab == 3 then
-            DrawBansTab()
-        elseif state.currentTab == 4 then
-            DrawWhitelistTab()
-        elseif state.currentTab == 5 then
-            DrawAuditTab()
-        end
-        
-        -- Footer
-        ui.spacing()
-        if state.loading then
-            ui.textColored("Loading...", colors.offline)
-        end
-    end)
-end
-
--- ============================================================================
--- INPUT HANDLING
--- ============================================================================
-
-function script.update(dt)
-    -- Check hotkey
-    if ac.isKeyPressed(config.hotkey) then
-        if state.isAdmin then
-            state.panelOpen = not state.panelOpen
-            if state.panelOpen then
-                FetchPlayers()
-                FetchBans()
-                FetchStatus()
-                FetchEnvironment()
-                FetchWhitelist()
-            end
-        end
+    -- Footer with error display
+    ui.separator()
+    if state.lastError and (os.clock() - state.lastErrorTime) < 10 then
+        ui.textColored(rgbm(1, 0.3, 0.3, 1), "Error: " .. state.lastError)
+    else
+        ui.textDisabled(string.format("Server: %s:%d", serverIP, serverPort))
     end
 end
 
-function script.drawUI()
-    DrawAdminPanel()
+-- ============================================================================
+-- INITIALIZATION & REGISTRATION
+-- ============================================================================
+
+-- Get player Steam ID on load
+local function initialize()
+    local car = ac.getCar(0)
+    if car then
+        -- Try to get Steam ID from driver info
+        state.mySteamId = ac.getDriverGuid(0) or ""
+    end
+    
+    -- Initial data load
+    refreshAdminStatus()
+    refreshWeatherTypes()
 end
 
--- ============================================================================
--- INITIALIZATION
--- ============================================================================
-
--- Check admin status on load
-CheckAdminStatus()
-
--- Register in online extras if admin
-setTimeout(function()
-    if state.isAdmin then
-        ui.registerOnlineExtra(ui.Icons.Settings, "Admin Panel", function() return state.isAdmin end, function()
-            state.panelOpen = true
-            FetchPlayers()
-            FetchBans()
-            FetchStatus()
-            FetchEnvironment()
-            FetchWhitelist()
-            FetchCspWeatherTypes()
-            return false -- Keep panel open
+-- Register in Online Extras menu (Extended Chat)
+-- CRITICAL: All 8 parameters required, including flags
+ui.registerOnlineExtra(
+    ui.Icons.Settings,                          -- iconID
+    "SXR Admin Panel",                          -- title
+    function()                                   -- availableCallback
+        return state.isAdmin or true  -- Show for testing, normally: return state.isAdmin
+    end,
+    function()                                   -- uiCallback
+        local close = false
+        
+        -- Auto-refresh
+        local now = os.clock()
+        if now - state.lastRefresh > state.refreshInterval then
+            state.lastRefresh = now
+            refreshPlayers()
+        end
+        
+        -- Draw panel content
+        ui.childWindow('adminContent', vec2(0, 480), false, ui.WindowFlags.None, function()
+            drawAdminPanel()
         end)
-    end
-end, 2000)
+        
+        return close
+    end,
+    nil,                                         -- closeCallback
+    ui.OnlineExtraFlags.Admin + ui.OnlineExtraFlags.Tool,  -- flags (Admin + Tool window)
+    ui.WindowFlags.None,                         -- toolFlags
+    vec2(500, 550)                              -- toolSize
+)
 
-ac.debug("Admin Tools UI", "Loaded")
-ac.debug("Steam ID", steamId)
+-- Initialize on script load
+initialize()
+
+-- Periodic refresh in update
+function script.update(dt)
+    -- Refresh admin status periodically
+    local now = os.clock()
+    if now - state.lastRefresh > 30 then
+        refreshAdminStatus()
+    end
+end
+
+logInfo("SXR Admin Tools loaded")

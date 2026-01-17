@@ -1,13 +1,13 @@
 using AssettoServer.Server.Configuration;
 using JetBrains.Annotations;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Configuration for Admin Tools Plugin
 /// </summary>
 [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
-public class SXRSXRAdminToolsConfiguration : IValidateConfiguration<SXRAdminToolsConfigurationValidator>
+public class SXRAdminToolsConfiguration : IValidateConfiguration<SXRAdminToolsConfigurationValidator>
 {
     // === ADMIN AUTHENTICATION ===
     
@@ -161,7 +161,7 @@ public class SXRSXRAdminToolsConfiguration : IValidateConfiguration<SXRAdminTool
     public bool EnableCustomTools { get; init; } = true;
 }
 
-public class SXRSXRAdminToolsConfigurationValidator : IValidator<SXRAdminToolsConfiguration>
+public class SXRAdminToolsConfigurationValidator : IValidator<SXRAdminToolsConfiguration>
 {
     public bool Validate(SXRAdminToolsConfiguration config, out string? errorMessage)
     {

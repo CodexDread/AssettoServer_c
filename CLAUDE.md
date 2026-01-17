@@ -1,3 +1,244 @@
+# SXR Development - Claude Code Instructions
+
+## Knowledge Base Location
+
+The SXR Development Knowledge Base is the authoritative reference for this project:
+- **File**: `SXR_Development_Knowledge_Base_v6.md` (or latest version)
+- **Location**: Project root or `/docs/` directory
+
+## When to Reference the Knowledge Base
+
+**ALWAYS read the knowledge base FIRST when:**
+- Starting any new plugin development
+- Fixing bugs in existing plugins
+- Adding new features to any SXR component
+- Working with AssettoServer APIs
+- Creating CSP Lua scripts (client-side UI)
+- Debugging network/packet issues
+- Implementing any pattern that might already be documented
+
+**Specific triggers:**
+- "Create a new plugin" → Read: Plugin Development section
+- "Add Lua UI" → Read: CSP Lua SDK Reference, Online Script Development
+- "Fix validation" → Read: Configuration System, Common Mistakes
+- "Add chat command" → Read: Command System section
+- "Track player data" → Read: Event System, Core Server Components
+- "Traffic/AI behavior" → Read: AI Traffic System section
+
+## How to Use the Knowledge Base
+
+### Before Writing Code
+```bash
+# Read relevant sections before implementing
+cat SXR_Development_Knowledge_Base_v6.md | grep -A 100 "## Plugin Development"
+```
+
+### During Development
+Reference specific patterns:
+- **Configuration validation**: Search for "IValidateConfiguration"
+- **Lua UI windows**: Search for "ui.toolWindow" and "inputs=true"
+- **Chat messages**: Search for "SendPacket" and "ChatMessage"
+- **Event handlers**: Search for "ClientConnected", "ClientDisconnected"
+
+### Code Review Checklist
+Before completing any task, verify against knowledge base:
+1. Configuration class has proper validator with `Validate()` method (not `IsValid`)
+2. Lua `ui.toolWindow()` calls include `inputs=true` parameter
+3. YAML config file follows naming: `plugin_<name>_cfg.yml`
+4. Embedded resources use correct path format in `.csproj`
+5. All chat packets use `SessionId = 255` for server messages
+
+## How to Update the Knowledge Base
+
+### When to Update
+Add new information when you:
+- Discover a bug pattern and its fix
+- Find an undocumented API behavior
+- Develop a new reusable pattern
+- Encounter a "gotcha" that wasted time
+- Successfully implement something complex
+
+### Update Format
+
+**For Bug Fixes:**
+```markdown
+### [Component] - Issue Description
+**Problem**: What went wrong
+**Cause**: Why it happened
+**Solution**: How to fix it
+**Code Example**: (if applicable)
+```
+
+**For New Patterns:**
+```markdown
+### Pattern Name
+**Use Case**: When to use this
+**Implementation**:
+```code
+// Example code
+```
+**Notes**: Any caveats or considerations
+```
+
+**For API Documentation:**
+```markdown
+### ClassName.MethodName
+**Purpose**: What it does
+**Parameters**: 
+- `param1` (Type): Description
+**Returns**: Type - Description
+**Example**:
+```code
+// Usage example
+```
+```
+
+### Update Process
+1. Make changes to the knowledge base file
+2. Add entry to the changelog section at the top
+3. Increment version number if significant changes
+4. Commit with message: `docs: Update knowledge base - [brief description]`
+
+## Critical Patterns to Remember
+
+### Configuration Validation (C#)
+```csharp
+// CORRECT - Method must be named "Validate"
+public class MyConfigValidator : AbstractValidator<MyConfig>
+{
+    public MyConfigValidator()
+    {
+        RuleFor(x => x.Property).NotEmpty();
+    }
+}
+
+// WRONG - "IsValid" will not be called
+public bool IsValid() { } // ❌ Never use this
+```
+
+### Lua Tool Windows
+```lua
+-- CORRECT - inputs=true enables button clicks
+ui.toolWindow("Title", pos, size, true, true, function()
+    if ui.button("Click Me") then  -- This works
+        doSomething()
+    end
+end)
+
+-- WRONG - buttons won't respond without inputs parameter
+ui.toolWindow("Title", pos, size, function()  -- ❌ Missing inputs=true
+    if ui.button("Click Me") then  -- This won't work
+        doSomething()
+    end
+end)
+```
+
+### Chat Messages (C#)
+```csharp
+// CORRECT - Use SessionId 255 for server messages
+client.SendPacket(new ChatMessage
+{
+    SessionId = 255,  // Server message indicator
+    Message = "Hello from server"
+});
+
+// Access the proper namespace
+using AssettoServer.Shared.Network.Packets.Outgoing;
+```
+
+### File Naming
+```
+✅ plugin_sxr_stats_cfg.yml      (correct: _cfg.yml suffix)
+❌ plugin_sxr_stats_config.yml   (wrong: _config.yml)
+❌ sxr_stats_cfg.yml             (wrong: missing plugin_ prefix)
+```
+
+## Project Structure Reference
+
+```
+SXRPluginName/
+├── SXRPluginName/
+│   ├── SXRPluginName.cs           # Main plugin (BackgroundService)
+│   ├── SXRPluginNameModule.cs     # Autofac DI registration
+│   ├── SXRPluginNameConfiguration.cs  # Config + Validator
+│   ├── SXRPluginNameController.cs # HTTP API (if needed)
+│   ├── SXRPluginNameCommandModule.cs  # Chat commands (if needed)
+│   ├── SXRPluginName.csproj
+│   ├── cfg/
+│   │   └── plugin_sxr_pluginname_cfg.yml
+│   └── lua/
+│       └── sxrpluginname.lua      # Client UI (if needed)
+├── README.md
+└── CHANGELOG.md                   # Required - track all changes
+```
+
+## Quick Reference Commands
+
+```bash
+# Search knowledge base for specific topic
+grep -n "topic" SXR_Development_Knowledge_Base_v6.md
+
+# Find all sections
+grep "^##" SXR_Development_Knowledge_Base_v6.md
+
+# Find code examples for a class
+grep -A 20 "ClassName" SXR_Development_Knowledge_Base_v6.md
+
+# Check for common mistakes section
+grep -A 50 "Common Mistakes" SXR_Development_Knowledge_Base_v6.md
+```
+
+## Integration Notes
+
+### Plugin Dependencies
+When a plugin depends on another:
+1. Check if target plugin exists at runtime (not compile time)
+2. Use interfaces for loose coupling
+3. Set providers via setter methods, not constructor injection
+4. Handle null gracefully when optional dependency missing
+
+Example:
+```csharp
+// In dependent plugin
+private IStatsProvider? _statsProvider;
+
+public void SetStatsProvider(IStatsProvider provider)
+{
+    _statsProvider = provider;
+    Log.Information("Stats provider connected");
+}
+
+// Usage - always null-check
+int level = _statsProvider?.GetDriverLevel(steamId) ?? 1;
+```
+
+### Event Flow
+```
+Player Connects → ClientConnected event
+                → Initialize player data
+                → Send welcome message
+                → Start tracking
+
+Player Action   → Specific event (Collision, Chat, etc.)
+                → Process in handler
+                → Update state
+                → Notify other plugins if needed
+
+Player Disconnects → ClientDisconnected event
+                   → Save player data
+                   → Clean up state
+                   → Remove from tracking
+```
+
+## Remember
+
+1. **Read the knowledge base first** - Most problems are already documented
+2. **Check the changelog** - See what's been tried before
+3. **Update when you learn** - Future you will thank present you
+4. **Follow the patterns** - Consistency prevents bugs
+5. **Test the basics** - Buttons click, configs load, packets send
+
+
 # AssettoServer Plugin Architecture Documentation
 
 This document provides comprehensive documentation on how plugins are developed and registered in the AssettoServer codebase.

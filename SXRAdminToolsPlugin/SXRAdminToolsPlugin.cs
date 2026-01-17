@@ -12,12 +12,12 @@ using AssettoServer.Shared.Weather;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// Admin Tools Plugin - Server administration framework
 /// </summary>
-public class SXRSXRAdminToolsPlugin : CriticalBackgroundService, IAssettoServerAutostart
+public class SXRAdminToolsPlugin : CriticalBackgroundService, IAssettoServerAutostart
 {
     private readonly EntryCarManager _entryCarManager;
     private readonly SessionManager _sessionManager;
@@ -804,6 +804,82 @@ public class SXRSXRAdminToolsPlugin : CriticalBackgroundService, IAssettoServerA
     public List<IAdminTool> GetCustomTools()
     {
         return _customTools.ToList();
+    }
+    
+    /// <summary>
+    /// Get server capabilities for feature availability UI
+    /// Checks which SXR plugins are loaded and what features are available
+    /// </summary>
+    public ServerCapabilities GetServerCapabilities()
+    {
+        var capabilities = new ServerCapabilities
+        {
+            // Core admin systems always available
+            PlayerManagement = true,
+            BanSystem = true,
+            AuditLog = _config.EnableAuditLog,
+            TimeWeatherControl = true,
+            WhitelistManagement = true,
+            
+            // Check for loaded SXR plugins by looking for their types
+            PlayerStatsAvailable = IsPluginLoaded("SXRPlayerStatsPlugin"),
+            NameplatesAvailable = IsPluginLoaded("SXRNameplatesPlugin"),
+            SPBattleAvailable = IsPluginLoaded("SXRSPBattlePlugin"),
+            CarLockAvailable = IsPluginLoaded("SXRCarLockPlugin"),
+            
+            // Planned systems - not yet implemented
+            ClubSystemAvailable = false,    // SXRClubsPlugin not yet developed
+            TimeTrialsAvailable = false,    // SXRTimeTrialsPlugin not yet developed
+            RankingsAvailable = false,      // SXRRankingsPlugin not yet developed  
+            TournamentAvailable = false,    // SXRTournamentPlugin not yet developed
+            EconomyAvailable = false,       // SXREconomyPlugin not yet developed
+            AchievementsAvailable = false,  // SXRAchievementsPlugin not yet developed
+            
+            ServerVersion = typeof(SXRAdminToolsPlugin).Assembly.GetName().Version?.ToString() ?? "1.0.0",
+            UnavailableMessage = "Coming Soon - Feature Not Yet Implemented"
+        };
+        
+        // Build list of loaded plugins
+        capabilities.LoadedPlugins = GetLoadedSXRPlugins();
+        
+        return capabilities;
+    }
+    
+    /// <summary>
+    /// Check if a specific plugin is loaded in the server
+    /// </summary>
+    private bool IsPluginLoaded(string pluginName)
+    {
+        try
+        {
+            // Check if the assembly is loaded
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            return assemblies.Any(a => a.GetName().Name?.Equals(pluginName, StringComparison.OrdinalIgnoreCase) == true);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Get list of loaded SXR plugins
+    /// </summary>
+    private List<string> GetLoadedSXRPlugins()
+    {
+        try
+        {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            return assemblies
+                .Where(a => a.GetName().Name?.StartsWith("SXR", StringComparison.OrdinalIgnoreCase) == true)
+                .Select(a => a.GetName().Name!)
+                .OrderBy(n => n)
+                .ToList();
+        }
+        catch
+        {
+            return new List<string> { "SXRAdminToolsPlugin" };
+        }
     }
     
     /// <summary>

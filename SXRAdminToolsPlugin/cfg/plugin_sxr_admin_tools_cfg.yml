@@ -24,7 +24,7 @@ ModeratorMaxBanHours: 24
 # === BAN SYSTEM ===
 
 # Path to ban database file
-BanDatabasePath: "cfg/plugins/AdminToolsPlugin/bans.json"
+BanDatabasePath: "cfg/plugins/SXRAdminToolsPlugin/bans.json"
 
 # Enable IP banning in addition to Steam ID
 EnableIPBans: false
@@ -53,7 +53,7 @@ KickCooldownSeconds: 5
 EnableAuditLog: true
 
 # Path to audit log file
-AuditLogPath: "cfg/plugins/AdminToolsPlugin/audit.log"
+AuditLogPath: "cfg/plugins/SXRAdminToolsPlugin/audit.log"
 
 # Maximum audit entries to keep in memory
 MaxAuditLogEntries: 1000

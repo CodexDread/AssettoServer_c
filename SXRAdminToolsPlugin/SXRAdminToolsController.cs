@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace SXRSXRAdminToolsPlugin;
+namespace SXRAdminToolsPlugin;
 
 /// <summary>
 /// HTTP API Controller for Admin Tools
 /// </summary>
 [ApiController]
 [Route("admin")]
-public class SXRSXRAdminToolsController : ControllerBase
+public class SXRAdminToolsController : ControllerBase
 {
     private readonly SXRAdminToolsPlugin _plugin;
     private readonly SXRBanService _banService;
@@ -478,6 +478,19 @@ public class SXRSXRAdminToolsController : ControllerBase
         if (!ValidateAuth()) return Unauthorized();
         
         return await _plugin.ExecuteToolAsync(toolId, adminSteamId, parameters ?? new());
+    }
+    
+    // === SERVER CAPABILITIES ===
+    
+    /// <summary>
+    /// Get server capabilities and available features
+    /// Used by admin panel to show/hide management sections
+    /// </summary>
+    [HttpGet("capabilities")]
+    public ActionResult<ServerCapabilities> GetCapabilities()
+    {
+        if (!ValidateAuth()) return Unauthorized();
+        return _plugin.GetServerCapabilities();
     }
 }
 
